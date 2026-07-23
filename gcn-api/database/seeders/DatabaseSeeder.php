@@ -44,13 +44,16 @@ class DatabaseSeeder extends Seeder
             'id' => $p['id'], 'name' => $p['name'], 'speed_mbps' => $p['speedMbps'], 'price' => $p['price'], 'is_active' => $p['isActive'], 'created_at' => $now, 'updated_at' => $now,
         ], $seed['packages']));
 
-        // speed → package map (by package name)
+        // Portal speed label → package. Connect reports "{N}Mbps", Fiber "FB-{N}Mbps";
+        // both map to the canonical "{N} MB" tier.
         $pkgIdByName = collect($seed['packages'])->pluck('id', 'name');
-        $speedMap = ['5Mbps' => 'Yellow', '15Mbps' => 'Orange', '20Mbps' => 'Red', '40Mbps' => 'Brown', '100Mbps' => 'Purple', '30Mbps' => null];
         $smRows = [];
         $sid = 1;
-        foreach ($speedMap as $label => $pkg) {
-            $smRows[] = ['id' => $sid++, 'speed_label' => $label, 'package_id' => $pkg ? ($pkgIdByName[$pkg] ?? null) : null, 'created_at' => $now, 'updated_at' => $now];
+        foreach ([5, 15, 20, 25, 30, 35, 40, 50, 60, 75, 100] as $spd) {
+            $pid = $pkgIdByName["$spd MB"] ?? null;
+            foreach (["{$spd}Mbps", "FB-{$spd}Mbps"] as $label) {
+                $smRows[] = ['id' => $sid++, 'speed_label' => $label, 'package_id' => $pid, 'created_at' => $now, 'updated_at' => $now];
+            }
         }
         DB::table('speed_maps')->insert($smRows);
 

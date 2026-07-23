@@ -140,13 +140,18 @@ class PortalSyncService
             }
 
             DB::transaction(function () use ($run, $account, $customer, $r, $forDate, &$imported) {
-                // Default the charge to the customer's standard package fee (NOT any
-                // stale frozen_amount, which the Excel import sometimes inflated with
-                // arrears). Staff can correct it on Charged Today before adding it.
-                $charged = optional($customer->package)->price ?? $customer->subscription?->frozen_amount ?? $r['cost'];
+                // Pick the package from the portal's reported speed (via speed_maps) so
+                // a 25 Mbps recharge maps to the "25 MB" tier — not the customer's stale
+                // (often legacy) stored package. Fall back to their current package.
+                $mappedPkgId = DB::table('speed_maps')->where('speed_label', $r['speedLabel'])->value('package_id');
+                $packageId = $mappedPkgId ?? $customer->current_package_id;
+                $pkgPrice = $packageId ? DB::table('packages')->where('id', $packageId)->value('price') : null;
+                // Default the charge to the package's standard fee (NOT any stale
+                // frozen_amount, which the Excel import sometimes inflated with arrears).
+                $charged = $pkgPrice ?? $customer->subscription?->frozen_amount ?? $r['cost'];
                 $charge = Charge::create([
                     'customer_id' => $customer->id, 'account_id' => $account->id,
-                    'package_id' => $customer->current_package_id,
+                    'package_id' => $packageId,
                     'amount_charged' => $charged, 'cost_amount' => $r['cost'],
                     'previous_balance' => $customer->outstanding_balance,
                     'charge_date' => $forDate, 'billing_period_label' => $r['rechargedAt']->format('F Y'),

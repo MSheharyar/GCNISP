@@ -223,12 +223,17 @@ function PendingRow({
           className="w-40 rounded-md border border-slate-200 px-2 py-1.5 text-[13px] focus:border-brand-400 focus:outline-none"
         >
           <option value="">— select —</option>
-          {packages.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-              {p.speedMbps ? ` · ${p.speedMbps} MB` : ''}
-            </option>
-          ))}
+          {/* Only the real portal packages (speed tiers) — legacy colour/Plus names are hidden. */}
+          {packages
+            .filter((p) => p.isActive)
+            .slice()
+            .sort((a, b) => (a.speedMbps ?? 0) - (b.speedMbps ?? 0))
+            .map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+                {p.speedMbps && !/mb/i.test(p.name) ? ` · ${p.speedMbps} MB` : ''}
+              </option>
+            ))}
         </select>
         {row.portalSpeed && <div className="mt-1 text-[11px] text-slate-400">portal: {row.portalSpeed}</div>}
       </td>

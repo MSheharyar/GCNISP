@@ -513,6 +513,20 @@ for (const [name, info] of [...pkgSeen.entries()].sort((a, b) => b[1].count - a[
   pkgIdByName.set(name, pkgId++);
 }
 
+// Ensure the canonical portal packages exist as active "N MB" tiers (Connect +
+// Fiber offer these speeds). Everything else — legacy colour names, Plus tiers,
+// odd sizes — is marked inactive below so it drops out of the pickers.
+const PORTAL_SPEEDS = [5, 15, 20, 25, 30, 35, 40, 50, 60, 75, 100];
+const PORTAL_PRICE = { 5: 1200, 15: 1300, 20: 1500, 25: 1800, 30: 1800, 35: 2000, 40: 1800, 50: 2500, 60: 3500, 75: 3500, 100: 8000 };
+for (const spd of PORTAL_SPEEDS) {
+  const name = `${spd} MB`;
+  if (!pkgIdByName.has(name)) {
+    packages.push({ id: pkgId, name, speedMbps: spd, price: PORTAL_PRICE[spd], isActive: true });
+    pkgIdByName.set(name, pkgId++);
+  }
+}
+const CANON_PKG_NAMES = new Set(PORTAL_SPEEDS.map((s) => `${s} MB`));
+
 // map package names → ids on customers & charges
 const resolvePkg = (name) => (name ? pkgIdByName.get(name) ?? null : null);
 const priceById = new Map(packages.map((p) => [p.id, p.price]));
@@ -581,9 +595,9 @@ for (const c of custMap.values()) {
   }
 }
 
-// A package is "active" if any current (active) customer is on it.
-const activePkgIds = new Set([...custMap.values()].filter((c) => c.status === 'active').map((c) => c.currentPackageId));
-for (const p of packages) p.isActive = activePkgIds.has(p.id);
+// A package is "active" only if it's one of the canonical portal tiers (the
+// speed packages Connect + Fiber actually offer); legacy names stay hidden.
+for (const p of packages) p.isActive = CANON_PKG_NAMES.has(p.name);
 
 // ── Finalise cable ───────────────────────────────────────────────────────
 const cableCustomers = [...cableMap.values()];
