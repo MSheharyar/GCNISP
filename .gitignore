@@ -1,0 +1,46 @@
+# ── Secrets (NEVER commit) ─────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+gcn-api/auth.json
+*.key
+gcn-api/storage/*.key
+
+# ── Real customer data / PII (kept out of the repo) ────────────────────
+# The raw monthly spreadsheets and the generated seed carry subscriber
+# names, house numbers and balances — regenerate locally from your Excel.
+Excel Files/
+gcn-web/src/data/seed.json
+
+# ── Dependencies / build output (generated) ────────────────────────────
+node_modules/
+**/node_modules/
+gcn-api/vendor/
+gcn-web/dist/
+gcn-web/dist-ssr/
+gcn-api/public/build/
+gcn-api/public/hot/
+gcn-api/public/storage/
+
+# ── Laravel runtime ────────────────────────────────────────────────────
+gcn-api/storage/*.key
+gcn-api/storage/logs/*.log
+gcn-api/storage/framework/cache/*
+gcn-api/storage/framework/sessions/*
+gcn-api/storage/framework/views/*
+gcn-api/storage/app/probe/
+gcn-api/.phpunit.result.cache
+gcn-api/.phpunit.cache/
+
+# ── Assistant / editor / OS ────────────────────────────────────────────
+.claude/
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.log
+.DS_Store
+Thumbs.db
+*.suo
+*.local

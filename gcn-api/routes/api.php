@@ -1,0 +1,80 @@
+<?php
+
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CableController;
+use App\Http\Controllers\ChargeController;
+use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\FinanceController;
+use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\MonthlyController;
+use App\Http\Controllers\ReferenceController;
+use App\Http\Controllers\StaffController;
+use App\Http\Controllers\SyncController;
+use Illuminate\Support\Facades\Route;
+
+// ── Public ────────────────────────────────────────────────────────────────
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:6,1');
+
+// ── Protected (Sanctum token) ──────────────────────────────────────────────
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/me', [AuthController::class, 'me']);
+    Route::post('/logout', [AuthController::class, 'logout']);
+
+    // Reference data
+    Route::get('/providers', [ReferenceController::class, 'providers']);
+    Route::get('/accounts', [ReferenceController::class, 'accounts']);
+    Route::get('/packages', [ReferenceController::class, 'packages']);
+    Route::get('/staff', [StaffController::class, 'index']);
+    Route::get('/speed-map', [ReferenceController::class, 'speedMap']);
+    Route::get('/org-settings', [ReferenceController::class, 'orgSettings']);
+    Route::get('/connect-sync', [SyncController::class, 'index']);
+    Route::get('/portal-stats', [SyncController::class, 'stats']);
+
+    // Dashboard
+    Route::get('/dashboard', [DashboardController::class, 'index']);
+    Route::get('/charged-today', [ChargeController::class, 'today']);
+    Route::get('/monthly', [MonthlyController::class, 'index']);
+
+    // Customers (internet)
+    Route::get('/customers', [CustomerController::class, 'index']);
+    Route::get('/recovery', [CustomerController::class, 'recovery']);
+    Route::get('/customers/{customer}', [CustomerController::class, 'show']);
+    Route::get('/customers/{customer}/ledger', [CustomerController::class, 'ledger']);
+
+    // ── Financial reads (admin + operator only — hidden from viewers) ───────
+    Route::middleware('role:admin,operator')->group(function () {
+        Route::get('/invoices', [InvoiceController::class, 'index']);
+        Route::get('/invoices/{invoice}/pdf', [InvoiceController::class, 'pdf']);
+        Route::get('/expenses', [FinanceController::class, 'expenses']);
+        Route::get('/cashbook', [FinanceController::class, 'cashbook']);
+        Route::get('/cable-customers', [CableController::class, 'index']);
+        Route::get('/cable-customers/{cable}', [CableController::class, 'show']);
+        Route::get('/cable-customers/{cable}/ledger', [CableController::class, 'ledger']);
+    });
+
+    // ── Writes (admin + operator only) ─────────────────────────────────────
+    Route::middleware('role:admin,operator')->group(function () {
+        Route::post('/customers', [CustomerController::class, 'store']);
+        Route::put('/customers/{customer}', [CustomerController::class, 'update']);
+        Route::post('/customers/{customer}/log', [CustomerController::class, 'logChargePayment']);
+        Route::post('/charges/{charge}/pay', [ChargeController::class, 'markPaid']);
+        Route::post('/charges/{charge}/commit', [ChargeController::class, 'commit']);
+        Route::post('/customers/{customer}/switch-account', [CustomerController::class, 'switchAccount']);
+
+        Route::post('/cable-customers', [CableController::class, 'store']);
+        Route::post('/cable-customers/{cable}/payment', [CableController::class, 'storePayment']);
+
+        Route::post('/expenses', [FinanceController::class, 'storeExpense']);
+        Route::post('/invoices', [InvoiceController::class, 'generate']);
+        Route::post('/connect-sync/run', [SyncController::class, 'run']);
+        Route::post('/portal-stats/refresh', [SyncController::class, 'refreshStats']);
+    });
+
+    // ── Admin-only: staff management ───────────────────────────────────────
+    Route::middleware('role:admin')->group(function () {
+        Route::post('/staff', [StaffController::class, 'store']);
+        Route::put('/staff/{user}', [StaffController::class, 'update']);
+        Route::delete('/staff/{user}', [StaffController::class, 'destroy']);
+    });
+});

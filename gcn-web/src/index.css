@@ -1,0 +1,103 @@
+@import 'tailwindcss';
+
+/*
+  GCN ISP Management — Design tokens
+  Dark navigation rail + light work area (MindMeister-inspired).
+*/
+@theme {
+  /* Brand */
+  --color-brand-50: #eef6ff;
+  --color-brand-100: #d9ebff;
+  --color-brand-200: #bcdcff;
+  --color-brand-300: #8ec6ff;
+  --color-brand-400: #59a5ff;
+  --color-brand-500: #2f83f7;
+  --color-brand-600: #1a66e0;
+  --color-brand-700: #1651b8;
+  --color-brand-800: #184693;
+  --color-brand-900: #193d76;
+
+  /* Dark sidebar surface */
+  --color-ink-950: #0c0f17;
+  --color-ink-900: #11151f;
+  --color-ink-850: #161b27;
+  --color-ink-800: #1c2230;
+  --color-ink-700: #29313f;
+  --color-ink-600: #3a4353;
+
+  /* Neutral work area */
+  --color-canvas: #f6f7f9;
+  --color-surface: #ffffff;
+
+  /* Package (color-coded tiers) — the color IS the package identity */
+  --color-pkg-yellow: #f5b81c;
+  --color-pkg-orange: #f3843b;
+  --color-pkg-red: #e34b4b;
+  --color-pkg-brown: #a9682f;
+  --color-pkg-purple: #8b5cf6;
+  --color-pkg-green: #22a06b;
+
+  --font-sans: 'Inter', system-ui, 'Segoe UI', Roboto, sans-serif;
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    margin: 0;
+    font-family: var(--font-sans);
+    background: var(--color-canvas);
+    color: #1f2733;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  h1,
+  h2,
+  h3 {
+    color: #0f1725;
+    font-weight: 600;
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: rgba(120, 130, 145, 0.35);
+    border-radius: 99px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  /* Subtle entrance: fade + rise. Stagger with inline animation-delay. */
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .animate-rise {
+    opacity: 0;
+    animation: rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-rise {
+      opacity: 1;
+      animation: none;
+    }
+  }
+}
