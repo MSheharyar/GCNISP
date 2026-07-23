@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import '../api/api.dart';
 import 'login_screen.dart';
 
 class MoreScreen extends StatelessWidget {
@@ -8,6 +9,10 @@ class MoreScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final user = api.user;
+    final name = user?.name ?? 'GCN user';
+    final email = user?.email ?? '';
+    final role = (user?.role ?? 'user').toUpperCase();
     return Scaffold(
       appBar: AppBar(
         backgroundColor: GcnColors.surface,
@@ -21,14 +26,14 @@ class MoreScreen extends StatelessWidget {
         children: [
           GcnCard(
             child: Row(children: [
-              const Avatar('SG', size: 52),
+              Avatar(initials(name), size: 52),
               const SizedBox(width: 14),
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: const [
-                Text('Sheharyar Ghori', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: GcnColors.ink)),
-                SizedBox(height: 2),
-                Text('sheharyar@gcn.pk', style: TextStyle(fontSize: 13, color: GcnColors.muted)),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: GcnColors.ink)),
+                const SizedBox(height: 2),
+                Text(email, style: const TextStyle(fontSize: 13, color: GcnColors.muted)),
               ])),
-              const Pill('ADMIN', bg: GcnColors.brand50, fg: GcnColors.brand),
+              Pill(role, bg: GcnColors.brand50, fg: GcnColors.brand),
             ]),
           ),
           const SizedBox(height: 16),
@@ -55,7 +60,11 @@ class MoreScreen extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           OutlinedButton.icon(
-            onPressed: () => Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (_) => const LoginScreen()), (r) => false),
+            onPressed: () async {
+              await api.logout();
+              if (!context.mounted) return;
+              Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (_) => const LoginScreen()), (r) => false);
+            },
             icon: const Icon(Icons.logout_rounded, size: 18),
             label: const Text('Sign out'),
             style: OutlinedButton.styleFrom(foregroundColor: GcnColors.red, side: const BorderSide(color: GcnColors.hairline), padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),

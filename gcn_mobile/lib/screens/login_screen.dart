@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme.dart';
+import '../api/api.dart';
 import 'home_shell.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -14,6 +15,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _password = TextEditingController();
   bool _obscure = true;
   bool _loading = false;
+  String? _error;
 
   @override
   void dispose() {
@@ -23,10 +25,22 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _signIn() async {
-    setState(() => _loading = true);
-    await Future.delayed(const Duration(milliseconds: 600)); // UI-phase stub
-    if (!mounted) return;
-    Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const HomeShell()));
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      await api.login(_email.text.trim(), _password.text);
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const HomeShell()));
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = e.toString();
+      });
+    }
   }
 
   @override
@@ -83,6 +97,18 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                   ),
+                  if (_error != null) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(color: GcnColors.red50, borderRadius: BorderRadius.circular(10)),
+                      child: Row(children: [
+                        const Icon(Icons.error_outline_rounded, size: 18, color: GcnColors.red),
+                        const SizedBox(width: 8),
+                        Expanded(child: Text(_error!, style: const TextStyle(fontSize: 12.5, color: GcnColors.red))),
+                      ]),
+                    ),
+                  ],
                   const SizedBox(height: 24),
                   FilledButton(
                     onPressed: _loading ? null : _signIn,

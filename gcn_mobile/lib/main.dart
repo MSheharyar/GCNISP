@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
 import 'theme.dart';
+import 'api/api.dart';
 import 'screens/login_screen.dart';
+import 'screens/home_shell.dart';
 
-void main() => runApp(const GcnApp());
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await api.loadToken();
+  runApp(const GcnApp());
+}
 
 class GcnApp extends StatelessWidget {
   const GcnApp({super.key});
@@ -13,7 +19,7 @@ class GcnApp extends StatelessWidget {
       title: 'GCN',
       debugShowCheckedModeBanner: false,
       theme: gcnTheme(),
-      home: const LoginScreen(),
+      home: api.isLoggedIn ? const HomeShell() : const LoginScreen(),
     );
   }
 }
