@@ -128,6 +128,14 @@ class Api {
   Future<List<Customer>> customers() async =>
       ((await _get('/customers')) as List).map((e) => Customer.fromJson(e as Map<String, dynamic>)).toList();
 
+  Future<MonthlyData> monthly({String? month}) async =>
+      MonthlyData.fromJson(await _get('/monthly${month != null ? '?month=$month' : ''}') as Map<String, dynamic>);
+
+  Future<CashBook> cashbook() async => CashBook.fromJson(await _get('/cashbook') as Map<String, dynamic>);
+
+  Future<List<Expense>> expenses() async =>
+      ((await _get('/expenses')) as List).map((e) => Expense.fromJson(e as Map<String, dynamic>)).toList();
+
   // ── Writes ────────────────────────────────────────────────────────────
   /// Record a payment (collect arrears) — payment-only, no new charge.
   Future<void> recordPayment({required int customerId, required int amount, required String method, String? date}) async {

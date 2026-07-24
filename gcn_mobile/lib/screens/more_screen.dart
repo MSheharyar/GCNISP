@@ -3,6 +3,8 @@ import '../theme.dart';
 import '../widgets.dart';
 import '../api/api.dart';
 import 'login_screen.dart';
+import 'monthly_register_screen.dart';
+import 'cash_book_screen.dart';
 
 class MoreScreen extends StatelessWidget {
   const MoreScreen({super.key});
@@ -13,6 +15,9 @@ class MoreScreen extends StatelessWidget {
     final name = user?.name ?? 'GCN user';
     final email = user?.email ?? '';
     final role = (user?.role ?? 'user').toUpperCase();
+    final isViewer = user?.isViewer ?? false;
+    void open(Widget s) => Navigator.of(context).push(MaterialPageRoute(builder: (_) => s));
+    void soon() => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(behavior: SnackBarBehavior.floating, content: Text('Coming soon on mobile')));
     return Scaffold(
       appBar: AppBar(
         backgroundColor: GcnColors.surface,
@@ -39,23 +44,25 @@ class MoreScreen extends StatelessWidget {
           const SizedBox(height: 16),
           GcnCard(
             padding: EdgeInsets.zero,
-            child: Column(children: const [
-              _Item(Icons.calendar_month_rounded, 'Monthly register', 'Per-month recharge report'),
-              Divider(height: 1, color: GcnColors.hairline, indent: 60),
-              _Item(Icons.receipt_long_rounded, 'Cash Book', 'Kharcha & profit'),
-              Divider(height: 1, color: GcnColors.hairline, indent: 60),
-              _Item(Icons.tv_rounded, 'TV Cable', 'Cable subscribers'),
-              Divider(height: 1, color: GcnColors.hairline, indent: 60),
-              _Item(Icons.people_rounded, 'Customers', 'All internet subscribers'),
+            child: Column(children: [
+              _Item(Icons.calendar_month_rounded, 'Monthly register', 'Per-month recharge report', onTap: () => open(const MonthlyRegisterScreen())),
+              if (!isViewer) ...[
+                const Divider(height: 1, color: GcnColors.hairline, indent: 60),
+                _Item(Icons.receipt_long_rounded, 'Cash Book', 'Kharcha & profit', onTap: () => open(const CashBookScreen())),
+              ],
+              const Divider(height: 1, color: GcnColors.hairline, indent: 60),
+              _Item(Icons.tv_rounded, 'TV Cable', 'Cable subscribers', onTap: soon),
+              const Divider(height: 1, color: GcnColors.hairline, indent: 60),
+              _Item(Icons.people_rounded, 'Customers', 'All internet subscribers', onTap: soon),
             ]),
           ),
           const SizedBox(height: 16),
           GcnCard(
             padding: EdgeInsets.zero,
-            child: Column(children: const [
-              _Item(Icons.settings_outlined, 'Settings', 'Organization & preferences'),
-              Divider(height: 1, color: GcnColors.hairline, indent: 60),
-              _Item(Icons.help_outline_rounded, 'Help & support', null),
+            child: Column(children: [
+              _Item(Icons.settings_outlined, 'Settings', 'Organization & preferences', onTap: soon),
+              const Divider(height: 1, color: GcnColors.hairline, indent: 60),
+              _Item(Icons.help_outline_rounded, 'Help & support', null, onTap: soon),
             ]),
           ),
           const SizedBox(height: 16),
@@ -81,16 +88,17 @@ class _Item extends StatelessWidget {
   final IconData icon;
   final String title;
   final String? subtitle;
-  const _Item(this.icon, this.title, this.subtitle);
+  final VoidCallback? onTap;
+  const _Item(this.icon, this.title, this.subtitle, {this.onTap});
   @override
   Widget build(BuildContext context) {
     return ListTile(
+      onTap: onTap,
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
       leading: Container(width: 34, height: 34, decoration: BoxDecoration(color: GcnColors.canvas, borderRadius: BorderRadius.circular(9)), child: Icon(icon, size: 19, color: GcnColors.inkSoft)),
       title: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: GcnColors.ink)),
       subtitle: subtitle == null ? null : Text(subtitle!, style: const TextStyle(fontSize: 12, color: GcnColors.muted)),
       trailing: const Icon(Icons.chevron_right_rounded, color: GcnColors.muted),
-      onTap: () {},
     );
   }
 }

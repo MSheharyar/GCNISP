@@ -120,8 +120,8 @@ class Recharge {
 
 class Customer {
   final int id, balance, monthsOverdue;
-  final String name, loginId, house, sector;
-  Customer({required this.id, required this.name, required this.loginId, required this.house, required this.sector, required this.balance, required this.monthsOverdue});
+  final String name, loginId, house, sector, status;
+  Customer({required this.id, required this.name, required this.loginId, required this.house, required this.sector, required this.balance, required this.monthsOverdue, required this.status});
   factory Customer.fromJson(Map<String, dynamic> j) => Customer(
         id: _int(j['id']),
         name: _str(j['name']),
@@ -130,5 +130,96 @@ class Customer {
         sector: _str(j['sector']),
         balance: _int(j['outstandingBalance']),
         monthsOverdue: _int(j['monthsOverdue']),
+        status: _str(j['status']),
+      );
+}
+
+class MonthlyRow {
+  final int chargeId, customerId, amount, balance;
+  final String loginId, name, house, sector, account, chargeDate;
+  final String? package, paidDate, method;
+  final int? speedMbps;
+  final bool paid;
+  MonthlyRow({required this.chargeId, required this.customerId, required this.amount, required this.balance, required this.loginId, required this.name, required this.house, required this.sector, required this.account, required this.chargeDate, required this.package, required this.paidDate, required this.method, required this.speedMbps, required this.paid});
+  factory MonthlyRow.fromJson(Map<String, dynamic> j) => MonthlyRow(
+        chargeId: _int(j['chargeId']),
+        customerId: _int(j['customerId']),
+        amount: _int(j['amount']),
+        balance: _int(j['balance']),
+        loginId: _str(j['loginId']),
+        name: _str(j['name']),
+        house: _str(j['houseNo']),
+        sector: _str(j['sector']),
+        account: _str(j['account']),
+        chargeDate: _str(j['chargeDate']),
+        package: j['package']?.toString(),
+        paidDate: j['paidDate']?.toString(),
+        method: j['method']?.toString(),
+        speedMbps: _intN(j['speedMbps']),
+        paid: j['paid'] == true,
+      );
+}
+
+class MonthlyData {
+  final List<String> months;
+  final String month;
+  final List<MonthlyRow> rows;
+  final int count, charged, collected, paidCount;
+  MonthlyData({required this.months, required this.month, required this.rows, required this.count, required this.charged, required this.collected, required this.paidCount});
+  factory MonthlyData.fromJson(Map<String, dynamic> j) {
+    final s = (j['summary'] as Map<String, dynamic>?) ?? {};
+    return MonthlyData(
+      months: ((j['months'] as List?) ?? []).map((e) => e.toString()).toList(),
+      month: _str(j['month']),
+      rows: ((j['rows'] as List?) ?? []).map((e) => MonthlyRow.fromJson(e as Map<String, dynamic>)).toList(),
+      count: _int(s['count']),
+      charged: _int(s['charged']),
+      collected: _int(s['collected']),
+      paidCount: _int(s['paidCount']),
+    );
+  }
+}
+
+class CashMonth {
+  final String month;
+  final int netIncome, cableIncome, connectCost, spend, profit;
+  CashMonth({required this.month, required this.netIncome, required this.cableIncome, required this.connectCost, required this.spend, required this.profit});
+  factory CashMonth.fromJson(Map<String, dynamic> j) => CashMonth(
+        month: _str(j['month']),
+        netIncome: _int(j['netIncome']),
+        cableIncome: _int(j['cableIncome']),
+        connectCost: _int(j['connectCost']),
+        spend: _int(j['spend']),
+        profit: _int(j['profit']),
+      );
+}
+
+class CashBook {
+  final List<CashMonth> perMonth;
+  final Map<String, int> byCategory;
+  final int totalSpend;
+  final String latestMonth;
+  CashBook({required this.perMonth, required this.byCategory, required this.totalSpend, required this.latestMonth});
+  factory CashBook.fromJson(Map<String, dynamic> j) => CashBook(
+        perMonth: ((j['perMonth'] as List?) ?? []).map((e) => CashMonth.fromJson(e as Map<String, dynamic>)).toList(),
+        byCategory: ((j['byCategory'] as Map?) ?? {}).map((k, v) => MapEntry(k.toString(), _int(v))),
+        totalSpend: _int(j['totalSpend']),
+        latestMonth: _str(j['latestMonth']),
+      );
+}
+
+class Expense {
+  final int id, amount;
+  final String date, category, description, paidFrom;
+  final String? person;
+  Expense({required this.id, required this.amount, required this.date, required this.category, required this.description, required this.paidFrom, required this.person});
+  factory Expense.fromJson(Map<String, dynamic> j) => Expense(
+        id: _int(j['id']),
+        amount: _int(j['amount']),
+        date: _str(j['date']),
+        category: _str(j['category']),
+        description: _str(j['description']),
+        paidFrom: _str(j['paidFrom']),
+        person: j['person']?.toString(),
       );
 }
