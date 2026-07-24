@@ -29,18 +29,10 @@ class SyncController extends Controller
     {
         $date = $request->input('date'); // optional YYYY-MM-DD
 
-        foreach (config('scrapers.connect.accounts') as $name => $cred) {
-            if (empty($cred['user'])) {
-                continue;
-            }
-            $account = Account::where('name', $name)->first();
-            if ($account) {
-                $sync->runConnect($account, $cred['user'], $cred['pass'], $date);
-            }
-        }
-        $fiber = Account::where('name', config('scrapers.fiberbeam.account'))->first();
-        if ($fiber) {
-            $sync->runFiberBeam($fiber, $date);
+        // Account is tenant-scoped, so this only runs the current dealer's accounts.
+        // runAccount() no-ops on accounts without portal credentials.
+        foreach (Account::all() as $account) {
+            $sync->runAccount($account, $date);
         }
 
         $sync->syncDashboards(); // refresh the live portal KPIs too
@@ -61,6 +53,63 @@ class SyncController extends Controller
         $sync->syncDashboards();
 
         return $this->stats();
+    }
+
+    // ── Portal credentials (admin) ──────────────────────────────────────────
+    // The dealer's own accounts + their portal login state. The password is never
+    // returned — only whether one is set.
+    public function portalAccounts()
+    {
+        return Account::with('provider:id,name,type')->orderBy('id')->get()->map(fn ($a) => [
+            'id' => $a->id,
+            'name' => $a->name,
+            'provider' => $a->provider?->name,
+            'source' => $a->portal_source,
+            'username' => $a->portal_username,
+            'dealer' => $a->portal_dealer,
+            'enabled' => (bool) $a->portal_enabled,
+            'hasPassword' => filled($a->portal_password),
+        ]);
+    }
+
+    // Save an account's portal credentials. Password is only overwritten when a
+    // (non-empty) new one is supplied, so toggling "enabled" won't wipe it.
+    public function updatePortalAccount(Request $request, Account $account)
+    {
+        $data = $request->validate([
+            'source' => ['nullable', 'in:connect,fiberbeam'],
+            'username' => ['nullable', 'string', 'max:120'],
+            'password' => ['nullable', 'string', 'max:200'],
+            'dealer' => ['nullable', 'string', 'max:120'],
+            'enabled' => ['boolean'],
+        ]);
+
+        if (blank($data['source'] ?? null)) {
+            // Disconnecting: wipe every credential field so no secret lingers.
+            $account->forceFill([
+                'portal_source' => null, 'portal_username' => null, 'portal_password' => null,
+                'portal_dealer' => null, 'portal_enabled' => false,
+            ]);
+        } else {
+            $account->portal_source = $data['source'];
+            $account->portal_username = $data['username'] ?? null;
+            $account->portal_dealer = $data['dealer'] ?? null;
+            $account->portal_enabled = $data['enabled'] ?? false;
+            if (filled($data['password'] ?? null)) {
+                $account->portal_password = $data['password']; // only overwrite when a new one is typed
+            }
+        }
+        $account->save();
+
+        return [
+            'id' => $account->id,
+            'name' => $account->name,
+            'source' => $account->portal_source,
+            'username' => $account->portal_username,
+            'dealer' => $account->portal_dealer,
+            'enabled' => (bool) $account->portal_enabled,
+            'hasPassword' => filled($account->portal_password),
+        ];
     }
 
     private function statPayload(PortalStat $s): array

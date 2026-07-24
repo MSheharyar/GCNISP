@@ -2,7 +2,9 @@
 
 namespace App\Support;
 
+use App\Models\Account;
 use App\Models\Package;
+use App\Models\Provider;
 use App\Models\Setting;
 use App\Models\SpeedMap;
 
@@ -31,6 +33,15 @@ class DealerProvisioner
                     SpeedMap::create(['speed_label' => $label, 'package_id' => $idBySpeed[$speed]]);
                 }
             }
+
+            // Portal-capable accounts, disabled until the dealer enters their own
+            // credentials (Settings → Portal Credentials). Dealers on other ISPs
+            // can rename/repurpose these or just enter data manually.
+            $connect = Provider::create(['name' => 'Connect Communication', 'type' => 'reseller']);
+            Account::create(['provider_id' => $connect->id, 'name' => 'Connect', 'portal_source' => 'connect', 'portal_enabled' => false]);
+
+            $fiber = Provider::create(['name' => 'Fiber ISP', 'type' => 'in_house']);
+            Account::create(['provider_id' => $fiber->id, 'name' => 'Fiber ISP', 'portal_source' => 'fiberbeam', 'portal_enabled' => false]);
 
             $settings = [
                 'business_name' => $businessName,

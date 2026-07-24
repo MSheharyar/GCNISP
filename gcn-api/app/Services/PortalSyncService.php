@@ -10,6 +10,7 @@ use App\Models\SyncRow;
 use App\Models\SyncRun;
 use App\Services\Scrapers\ConnectConnector;
 use App\Services\Scrapers\FiberBeamConnector;
+use App\Support\Tenant;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Throwable;
@@ -20,6 +21,25 @@ class PortalSyncService
         private ConnectConnector $connect,
         private FiberBeamConnector $fiber,
     ) {}
+
+    /**
+     * Sync one account using its resolved credentials (stored per-dealer, or the
+     * shared .env fallback for GCN). Returns null when the account has no usable
+     * credentials for either portal.
+     */
+    public function runAccount(Account $account, ?string $date = null, string $onlySource = 'all'): ?SyncRun
+    {
+        $cred = $this->credentialsFor($account);
+        if (! $cred || ($onlySource !== 'all' && $onlySource !== $cred['source'])) {
+            return null;
+        }
+
+        return match ($cred['source']) {
+            'connect' => $this->runConnect($account, $cred['user'], $cred['pass'], $date),
+            'fiberbeam' => $this->runFiberBeam($account, $date, $cred['dealer'], $cred['user'], $cred['pass']),
+            default => null,
+        };
+    }
 
     /** Sync one Connect reseller account (GCNDIGITAL / MRGNET). */
     public function runConnect(Account $account, string $user, string $pass, ?string $date = null): SyncRun
@@ -34,11 +54,11 @@ class PortalSyncService
         });
     }
 
-    /** Sync the in-house Fiber Beam panel. */
-    public function runFiberBeam(Account $account, ?string $date = null): SyncRun
+    /** Sync a Fiber Beam panel (defaults to GCN's .env creds, or a dealer's own). */
+    public function runFiberBeam(Account $account, ?string $date = null, ?string $dealer = null, ?string $user = null, ?string $pass = null): SyncRun
     {
-        return $this->guarded('fiberbeam', $account, $date, function ($forDate) {
-            return collect($this->fiber->fetchRecharges($forDate, $forDate))->map(fn ($r) => [
+        return $this->guarded('fiberbeam', $account, $date, function ($forDate) use ($dealer, $user, $pass) {
+            return collect($this->fiber->fetchRecharges($forDate, $forDate, $dealer, $user, $pass))->map(fn ($r) => [
                 'portalUser' => $r['userId'],
                 'speedLabel' => $r['packageLabel'],
                 'cost' => $r['price'],
@@ -47,22 +67,55 @@ class PortalSyncService
         });
     }
 
-    /** Scrape each portal account's dashboard KPIs into portal_stats (latest snapshot). */
-    public function syncDashboards(): void
+    /**
+     * Resolve an account's portal credentials. Prefers the dealer's own stored
+     * (encrypted) credentials; falls back to the shared .env config by account
+     * name so GCN keeps working until it migrates. Returns null if neither exists.
+     *
+     * @return array{source:string,user:string,pass:?string,dealer:?string}|null
+     */
+    private function credentialsFor(Account $account): ?array
     {
-        foreach (config('scrapers.connect.accounts') as $name => $cred) {
-            if (empty($cred['user'])) {
-                continue;
-            }
-            $account = Account::where('name', $name)->first();
-            if ($account) {
-                $this->captureDashboard($account, 'connect', fn () => $this->connect->fetchDashboard($cred['user'], $cred['pass']));
-            }
+        if ($account->hasPortalCredentials()) {
+            return [
+                'source' => $account->portal_source,
+                'user' => $account->portal_username,
+                'pass' => $account->portal_password,
+                'dealer' => $account->portal_dealer,
+            ];
         }
 
-        $fiber = Account::where('name', config('scrapers.fiberbeam.account'))->first();
-        if ($fiber) {
-            $this->captureDashboard($fiber, 'fiberbeam', fn () => $this->fiber->fetchDashboard());
+        // Legacy .env fallback — only for the original tenant's known accounts.
+        $connect = config('scrapers.connect.accounts');
+        if (! empty($connect[$account->name]['user'])) {
+            return ['source' => 'connect', 'user' => $connect[$account->name]['user'], 'pass' => $connect[$account->name]['pass'], 'dealer' => null];
+        }
+        if ($account->name === config('scrapers.fiberbeam.account') && ! empty(config('scrapers.fiberbeam.user'))) {
+            $fb = config('scrapers.fiberbeam');
+
+            return ['source' => 'fiberbeam', 'user' => $fb['user'], 'pass' => $fb['pass'], 'dealer' => $fb['dealer']];
+        }
+
+        return null;
+    }
+
+    /**
+     * Scrape each account's dashboard KPIs into portal_stats. In a request this
+     * runs only the current dealer's accounts (Account is tenant-scoped); from the
+     * scheduler (no tenant) it runs every dealer's accounts.
+     */
+    public function syncDashboards(): void
+    {
+        foreach (Account::all() as $account) {
+            $cred = $this->credentialsFor($account);
+            if (! $cred) {
+                continue;
+            }
+            Tenant::run($account->dealer_id, function () use ($account, $cred) {
+                $this->captureDashboard($account, $cred['source'], fn () => $cred['source'] === 'connect'
+                    ? $this->connect->fetchDashboard($cred['user'], $cred['pass'])
+                    : $this->fiber->fetchDashboard($cred['user'], $cred['pass']));
+            });
         }
     }
 
@@ -84,19 +137,24 @@ class PortalSyncService
 
     private function guarded(string $source, Account $account, ?string $date, callable $fetch): SyncRun
     {
-        $forDate = $date ?? now()->toDateString();
-        $run = SyncRun::create([
-            'account_id' => $account->id, 'source' => $source, 'for_date' => $forDate,
-            'started_at' => now(), 'status' => 'running',
-        ]);
-        try {
-            $rows = $fetch($forDate);
-            $this->process($run, $account, $rows, $forDate);
-        } catch (Throwable $e) {
-            $run->update(['status' => 'failed', 'finished_at' => now(), 'error_message' => $e->getMessage()]);
-        }
+        // Pin the tenant to THIS account's dealer for the whole run so customer /
+        // charge lookups (and the new rows) stay within the right dealer — critical
+        // in the scheduler where no request has set the tenant.
+        return Tenant::run($account->dealer_id, function () use ($source, $account, $date, $fetch) {
+            $forDate = $date ?? now()->toDateString();
+            $run = SyncRun::create([
+                'account_id' => $account->id, 'source' => $source, 'for_date' => $forDate,
+                'started_at' => now(), 'status' => 'running',
+            ]);
+            try {
+                $rows = $fetch($forDate);
+                $this->process($run, $account, $rows, $forDate);
+            } catch (Throwable $e) {
+                $run->update(['status' => 'failed', 'finished_at' => now(), 'error_message' => $e->getMessage()]);
+            }
 
-        return $run->fresh();
+            return $run->fresh();
+        });
     }
 
     private function process(SyncRun $run, Account $account, $rows, string $forDate): void

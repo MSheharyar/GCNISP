@@ -144,6 +144,25 @@ export interface PortalStat {
   capturedAt: string | null;
 }
 
+export interface PortalAccount {
+  id: number;
+  name: string;
+  provider: string | null;
+  source: 'connect' | 'fiberbeam' | null;
+  username: string | null;
+  dealer: string | null; // fiberbeam dealer slug
+  enabled: boolean;
+  hasPassword: boolean;
+}
+
+export interface PortalAccountPayload {
+  source: 'connect' | 'fiberbeam' | null;
+  username: string | null;
+  password?: string | null; // only sent when changing it
+  dealer: string | null;
+  enabled: boolean;
+}
+
 export interface CommitChargeResult {
   chargeId: number;
   pending: boolean;
@@ -256,6 +275,9 @@ export const api = {
   runSync: () => req<{ runs: SyncRun[]; rows: SyncRow[] }>('/connect-sync/run', { method: 'POST' }),
   portalStats: () => req<PortalStat[]>('/portal-stats'),
   refreshPortalStats: () => req<PortalStat[]>('/portal-stats/refresh', { method: 'POST' }),
+  portalAccounts: () => req<PortalAccount[]>('/portal-accounts'),
+  updatePortalAccount: (id: number, payload: PortalAccountPayload) =>
+    req<PortalAccount>(`/portal-accounts/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
 
   customers: () => req<Customer[]>('/customers'),
   customer: (id: number) => req<Customer>(`/customers/${id}`),

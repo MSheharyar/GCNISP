@@ -17,28 +17,15 @@ class SyncPortals extends Command
         $date = $this->option('date');
         $source = $this->option('source');
 
-        if ($source === 'all' || $source === 'connect') {
-            foreach (config('scrapers.connect.accounts') as $name => $cred) {
-                if (empty($cred['user'])) {
-                    continue;
-                }
-                $account = Account::where('name', $name)->first();
-                if (! $account) {
-                    $this->warn("No account row for {$name}, skipping.");
-
-                    continue;
-                }
-                $run = $sync->runConnect($account, $cred['user'], $cred['pass'], $date);
-                $this->line("Connect {$name}: {$run->status} — imported {$run->imported}, dup {$run->duplicates}, attention {$run->needs_attention}".($run->error_message ? " ({$run->error_message})" : ''));
+        // No tenant is set in the scheduler, so Account::all() spans EVERY dealer.
+        // runAccount() pins the tenant to each account's dealer for its run, so
+        // customer matching + new charges stay isolated per dealer.
+        foreach (Account::all() as $account) {
+            $run = $sync->runAccount($account, $date, $source);
+            if (! $run) {
+                continue;
             }
-        }
-
-        if ($source === 'all' || $source === 'fiberbeam') {
-            $account = Account::where('name', config('scrapers.fiberbeam.account'))->first();
-            if ($account) {
-                $run = $sync->runFiberBeam($account, $date);
-                $this->line("Fiber Beam: {$run->status} — imported {$run->imported}, dup {$run->duplicates}, attention {$run->needs_attention}".($run->error_message ? " ({$run->error_message})" : ''));
-            }
+            $this->line("[dealer {$account->dealer_id}] {$account->name} ({$run->source}): {$run->status} — imported {$run->imported}, dup {$run->duplicates}, attention {$run->needs_attention}".($run->error_message ? " ({$run->error_message})" : ''));
         }
 
         return self::SUCCESS;

@@ -79,10 +79,13 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
         Route::post('/portal-stats/refresh', [SyncController::class, 'refreshStats']);
     });
 
-    // ── Admin-only: staff management ───────────────────────────────────────
+    // ── Admin-only: staff management + portal credentials ──────────────────
     Route::middleware('role:admin')->group(function () {
         Route::post('/staff', [StaffController::class, 'store']);
         Route::put('/staff/{user}', [StaffController::class, 'update']);
         Route::delete('/staff/{user}', [StaffController::class, 'destroy']);
+
+        Route::get('/portal-accounts', [SyncController::class, 'portalAccounts']);
+        Route::put('/portal-accounts/{account}', [SyncController::class, 'updatePortalAccount']);
     });
 });

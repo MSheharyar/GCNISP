@@ -3,6 +3,7 @@ import { api, lookup } from '../services/api';
 import { useApi } from '../lib/useApi';
 import { formatPKR } from '../lib/format';
 import { Card, CardHeader, PackageTag, Button, cn } from '../components/ui/primitives';
+import PortalCredentials from '../components/PortalCredentials';
 
 const inputCls =
   'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100';
@@ -126,31 +127,8 @@ export default function Settings() {
         </div>
       </Card>
 
-      {/* Connect portal credentials (for nightly sync) */}
-      <Card className="p-5">
-        <CardHeader
-          title="Connect portal credentials"
-          subtitle="Stored encrypted, server-side — used by the nightly sync to log into each Connect account. Fiber ISP is in-house (no portal)."
-        />
-        <div className="grid grid-cols-1 gap-4 pt-4 sm:grid-cols-2">
-          {accounts
-            ?.filter((a) => lookup.provider(a.providerId)?.type === 'reseller')
-            .map((a) => (
-              <div key={a.id} className="rounded-lg border border-slate-200 p-4">
-                <div className="mb-2 flex items-center justify-between">
-                  <span className="text-sm font-semibold text-slate-800">{a.name}</span>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Connected
-                  </span>
-                </div>
-                <div className="space-y-2">
-                  <input className={inputCls} placeholder="Portal username" defaultValue={a.name.toLowerCase()} />
-                  <input type="password" className={inputCls} placeholder="Portal password" defaultValue="••••••••" />
-                </div>
-              </div>
-            ))}
-        </div>
-      </Card>
+      {/* Portal credentials (for nightly sync) — real, per-dealer + encrypted */}
+      <PortalCredentials />
 
       <div className="flex justify-end">
         <Button variant="primary">

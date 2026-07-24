@@ -14,8 +14,12 @@ class FiberBeamConnector
 {
     use ParsesHtmlTable;
 
-    /** Authenticate and return the logged-in HTTP client (shared session). */
-    private function login(): Client
+    /**
+     * Authenticate and return the logged-in HTTP client (shared session).
+     * Credentials default to the shared .env config (GCN) but a SaaS dealer
+     * passes their own.
+     */
+    private function login(?string $user = null, ?string $pass = null): Client
     {
         $cfg = config('scrapers.fiberbeam');
         $client = new Client([
@@ -29,20 +33,20 @@ class FiberBeamConnector
 
         $client->get($cfg['login_url']); // establish session
         $client->post($cfg['login_url'], [
-            'form_params' => ['username' => $cfg['user'], 'password' => $cfg['pass'], 'login_user' => 'Log IN'],
+            'form_params' => ['username' => $user ?? $cfg['user'], 'password' => $pass ?? $cfg['pass'], 'login_user' => 'Log IN'],
         ]);
 
         return $client;
     }
 
     /** @return array<array{userId:string,name:string,packageLabel:string,loadDate:string,price:int}> */
-    public function fetchRecharges(string $startDate, string $endDate): array
+    public function fetchRecharges(string $startDate, string $endDate, ?string $dealer = null, ?string $user = null, ?string $pass = null): array
     {
         $cfg = config('scrapers.fiberbeam');
-        $client = $this->login();
+        $client = $this->login($user, $pass);
 
         $html = (string) $client->post($cfg['report_ajax'], [
-            'form_params' => ['sd' => $startDate, 'ed' => $endDate, 'dealer' => $cfg['dealer']],
+            'form_params' => ['sd' => $startDate, 'ed' => $endDate, 'dealer' => $dealer ?? $cfg['dealer']],
             'headers' => [
                 'X-Requested-With' => 'XMLHttpRequest',
                 'Referer' => 'https://billing.fiber-beam.net/en/user_report.php',
@@ -76,9 +80,9 @@ class FiberBeamConnector
      *
      * @return array<string,int|null>
      */
-    public function fetchDashboard(): array
+    public function fetchDashboard(?string $user = null, ?string $pass = null): array
     {
-        $client = $this->login();
+        $client = $this->login($user, $pass);
         $html = (string) $client->get('https://billing.fiber-beam.net/en/index.php')->getBody();
         if (! str_contains($html, 'card-title')) {
             throw new RuntimeException('Fiber Beam: dashboard unavailable (login failed?).');
