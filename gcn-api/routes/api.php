@@ -5,6 +5,7 @@ use App\Http\Controllers\CableController;
 use App\Http\Controllers\ChargeController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DealerController;
 use App\Http\Controllers\FinanceController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\MonthlyController;
@@ -15,6 +16,13 @@ use Illuminate\Support\Facades\Route;
 
 // ── Public ────────────────────────────────────────────────────────────────
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:6,1');
+
+// ── SaaS owner console (super-admin only, NOT dealer-scoped) ────────────────
+Route::middleware(['auth:sanctum', 'superadmin'])->prefix('admin')->group(function () {
+    Route::get('/dealers', [DealerController::class, 'index']);
+    Route::post('/dealers', [DealerController::class, 'store']);
+    Route::put('/dealers/{dealer}', [DealerController::class, 'update']);
+});
 
 // ── Protected (Sanctum token) — every request is scoped to the user's dealer ─
 Route::middleware(['auth:sanctum', 'tenant'])->group(function () {

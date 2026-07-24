@@ -16,6 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => \App\Http\Middleware\EnsureRole::class,
             'tenant' => \App\Http\Middleware\SetTenant::class,
+            'superadmin' => \App\Http\Middleware\EnsureSuperAdmin::class,
         ]);
 
         // Ensure the tenant is set BEFORE route-model binding resolves, so bound

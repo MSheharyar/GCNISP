@@ -86,6 +86,11 @@ class DatabaseSeeder extends Seeder
             ['name' => 'Nadeem', 'email' => 'nadeem@gcn.pk', 'password' => $pw, 'role' => 'viewer', 'is_active' => true, 'created_at' => $now, 'updated_at' => $now],
         ]);
 
+        // ── SaaS owner (super-admin — no dealer; manages all dealers) ──────
+        DB::table('users')->insertOrIgnore([
+            ['name' => 'SaaS Owner', 'email' => 'owner@gcn.pk', 'password' => $pw, 'role' => 'admin', 'is_active' => true, 'is_super_admin' => true, 'created_at' => $now, 'updated_at' => $now],
+        ]);
+
         // ── Customers + subscriptions ─────────────────────────────────────
         $custRows = [];
         $subRows = [];
@@ -174,7 +179,7 @@ class DatabaseSeeder extends Seeder
         foreach (['providers', 'accounts', 'packages', 'speed_maps', 'settings', 'customers', 'subscriptions', 'charges', 'payments', 'cable_customers', 'cable_payments', 'expenses'] as $t) {
             DB::table($t)->update(['dealer_id' => 1]);
         }
-        DB::table('users')->update(['dealer_id' => 1]);
+        DB::table('users')->where('is_super_admin', false)->update(['dealer_id' => 1]);
 
         // ── Reset sequences (explicit ids were inserted) ──────────────────
         foreach (['dealers', 'providers', 'accounts', 'packages', 'speed_maps', 'settings', 'customers', 'subscriptions', 'charges', 'payments', 'cable_customers', 'cable_payments', 'expenses', 'users'] as $t) {
