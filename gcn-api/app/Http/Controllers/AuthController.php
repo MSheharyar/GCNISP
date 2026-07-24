@@ -50,6 +50,7 @@ class AuthController extends Controller
             'email' => $u->email,
             'role' => $u->role,
             'isActive' => (bool) $u->is_active,
+            'isSuperAdmin' => (bool) $u->is_super_admin,
         ];
     }
 }

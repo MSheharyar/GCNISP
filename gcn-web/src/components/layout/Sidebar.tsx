@@ -14,6 +14,7 @@ import {
   Clock,
   CalendarDays,
   ChevronRight,
+  Building2,
 } from 'lucide-react';
 import Logo from '../Logo';
 import { cn } from '../ui/primitives';
@@ -63,9 +64,16 @@ const SECTIONS: { title?: string; items: { to: string; label: string; icon: type
 export default function Sidebar() {
   const { user } = useAuth();
   const isViewer = user?.role === 'viewer';
-  const sections = isViewer
+  let sections = isViewer
     ? SECTIONS.map((s) => ({ ...s, items: s.items.filter((i) => VIEWER_PATHS.has(i.to)) })).filter((s) => s.items.length)
     : SECTIONS;
+  // Only the SaaS owner sees the cross-dealer console.
+  if (user?.isSuperAdmin) {
+    sections = [
+      ...sections,
+      { title: 'SaaS Owner', items: [{ to: '/console', label: 'Dealer Console', icon: Building2 }] },
+    ];
+  }
   return (
     <aside className="flex h-full w-64 shrink-0 flex-col bg-ink-900 text-slate-300">
       {/* Logo slot */}

@@ -233,6 +233,30 @@ export interface AuthUser {
   email: string;
   role: 'admin' | 'operator' | 'viewer';
   isActive: boolean;
+  isSuperAdmin?: boolean;
+}
+
+export interface Dealer {
+  id: number;
+  name: string;
+  slug: string;
+  status: 'active' | 'suspended' | 'trial';
+  contactName: string | null;
+  contactPhone: string | null;
+  users: number;
+  customers: number;
+  createdAt: string | null;
+  admin?: { id: number; name: string; email: string };
+}
+
+export interface DealerCreatePayload {
+  name: string;
+  slug?: string;
+  contactName?: string;
+  contactPhone?: string;
+  adminName: string;
+  adminEmail: string;
+  adminPassword: string;
 }
 
 export async function login(email: string, password: string): Promise<AuthUser> {
@@ -278,6 +302,13 @@ export const api = {
   portalAccounts: () => req<PortalAccount[]>('/portal-accounts'),
   updatePortalAccount: (id: number, payload: PortalAccountPayload) =>
     req<PortalAccount>(`/portal-accounts/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+
+  // ── SaaS owner console (super-admin only) ───────────────────────────────
+  dealers: () => req<Dealer[]>('/admin/dealers'),
+  createDealer: (payload: DealerCreatePayload) =>
+    req<Dealer>('/admin/dealers', { method: 'POST', body: JSON.stringify(payload) }),
+  updateDealer: (id: number, payload: Partial<{ name: string; status: string; contactName: string; contactPhone: string; slug: string }>) =>
+    req<Dealer>(`/admin/dealers/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
 
   customers: () => req<Customer[]>('/customers'),
   customer: (id: number) => req<Customer>(`/customers/${id}`),

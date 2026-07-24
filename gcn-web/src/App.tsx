@@ -17,6 +17,7 @@ import Invoices from './pages/Invoices';
 import Reports from './pages/Reports';
 import Staff from './pages/Staff';
 import Settings from './pages/Settings';
+import DealerConsole from './pages/DealerConsole';
 import Login from './pages/Login';
 
 export default function App() {
@@ -49,6 +50,7 @@ export default function App() {
           <Route path="/reports" element={<Reports />} />
             <Route path="/staff" element={<Staff />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/console" element={<DealerConsole />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
