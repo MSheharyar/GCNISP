@@ -3,10 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Concerns\BelongsToDealer;
 use Illuminate\Http\Request;
 
 class AuditLog extends Model
 {
+    use BelongsToDealer;
     public $timestamps = false;
 
     protected $guarded = [];

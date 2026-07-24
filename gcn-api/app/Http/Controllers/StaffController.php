@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\AuditLog;
 use App\Models\User;
+use App\Support\Tenant;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
@@ -12,7 +13,7 @@ class StaffController extends Controller
 {
     public function index()
     {
-        return User::orderBy('id')->get()->map(fn ($u) => $this->payload($u));
+        return User::where('dealer_id', Tenant::id())->orderBy('id')->get()->map(fn ($u) => $this->payload($u));
     }
 
     public function store(Request $request)
@@ -29,6 +30,7 @@ class StaffController extends Controller
             'role' => $data['role'],
             'password' => Hash::make($data['password']),
             'is_active' => true,
+            'dealer_id' => Tenant::id(),
         ]);
         AuditLog::record($request, 'invite', 'user', $user->id, ['email' => $user->email, 'role' => $user->role]);
 
@@ -37,6 +39,7 @@ class StaffController extends Controller
 
     public function update(Request $request, User $user)
     {
+        abort_if($user->dealer_id !== Tenant::id(), 404);
         $data = $request->validate([
             'role' => ['sometimes', 'in:admin,operator,viewer'],
             'isActive' => ['sometimes', 'boolean'],
@@ -51,7 +54,7 @@ class StaffController extends Controller
             && ((array_key_exists('role', $data) && $data['role'] !== 'admin')
                 || (array_key_exists('isActive', $data) && $data['isActive'] === false));
         if ($losingAdmin) {
-            $otherAdmins = User::where('role', 'admin')->where('is_active', true)->where('id', '!=', $user->id)->count();
+            $otherAdmins = User::where('dealer_id', Tenant::id())->where('role', 'admin')->where('is_active', true)->where('id', '!=', $user->id)->count();
             if ($otherAdmins === 0) {
                 return response()->json(['message' => 'You cannot remove the last active admin.'], 422);
             }
@@ -83,12 +86,13 @@ class StaffController extends Controller
 
     public function destroy(Request $request, User $user)
     {
+        abort_if($user->dealer_id !== Tenant::id(), 404);
         if ($user->id === $request->user()->id) {
             return response()->json(['message' => 'You cannot delete your own account.'], 422);
         }
         // Never leave the org with no way in.
         if ($user->role === 'admin') {
-            $otherAdmins = User::where('role', 'admin')->where('is_active', true)->where('id', '!=', $user->id)->count();
+            $otherAdmins = User::where('dealer_id', Tenant::id())->where('role', 'admin')->where('is_active', true)->where('id', '!=', $user->id)->count();
             if ($otherAdmins === 0) {
                 return response()->json(['message' => 'You cannot delete the last active admin.'], 422);
             }

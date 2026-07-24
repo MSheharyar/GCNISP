@@ -143,9 +143,9 @@ class PortalSyncService
                 // Pick the package from the portal's reported speed (via speed_maps) so
                 // a 25 Mbps recharge maps to the "25 MB" tier — not the customer's stale
                 // (often legacy) stored package. Fall back to their current package.
-                $mappedPkgId = DB::table('speed_maps')->where('speed_label', $r['speedLabel'])->value('package_id');
+                $mappedPkgId = DB::table('speed_maps')->where('dealer_id', $account->dealer_id)->where('speed_label', $r['speedLabel'])->value('package_id');
                 $packageId = $mappedPkgId ?? $customer->current_package_id;
-                $pkgPrice = $packageId ? DB::table('packages')->where('id', $packageId)->value('price') : null;
+                $pkgPrice = $packageId ? DB::table('packages')->where('dealer_id', $account->dealer_id)->where('id', $packageId)->value('price') : null;
                 // Default the charge to the package's standard fee (NOT any stale
                 // frozen_amount, which the Excel import sometimes inflated with arrears).
                 $charged = $pkgPrice ?? $customer->subscription?->frozen_amount ?? $r['cost'];

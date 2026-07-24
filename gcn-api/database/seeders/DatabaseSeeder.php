@@ -31,6 +31,13 @@ class DatabaseSeeder extends Seeder
         }
         Schema::enableForeignKeyConstraints();
 
+        // ── SaaS tenant: this entire seed belongs to dealer #1 (GCN) ──────
+        DB::table('dealers')->truncate();
+        DB::table('dealers')->insert([
+            'id' => 1, 'name' => 'Global Cable Network (GCN)', 'slug' => 'gcn', 'status' => 'active',
+            'contact_name' => 'Sheharyar Ghori', 'contact_phone' => '0321-2557490', 'created_at' => $now, 'updated_at' => $now,
+        ]);
+
         // ── Reference data ────────────────────────────────────────────────
         DB::table('providers')->insert(array_map(fn ($p) => [
             'id' => $p['id'], 'name' => $p['name'], 'type' => $p['type'], 'created_at' => $now, 'updated_at' => $now,
@@ -163,8 +170,14 @@ class DatabaseSeeder extends Seeder
         }
         $this->command->info('cable: '.count($seed['cableCustomers']).' | expenses: '.count($expRows));
 
+        // ── Tenant: assign every seeded row to dealer #1 (GCN) ────────────
+        foreach (['providers', 'accounts', 'packages', 'speed_maps', 'settings', 'customers', 'subscriptions', 'charges', 'payments', 'cable_customers', 'cable_payments', 'expenses'] as $t) {
+            DB::table($t)->update(['dealer_id' => 1]);
+        }
+        DB::table('users')->update(['dealer_id' => 1]);
+
         // ── Reset sequences (explicit ids were inserted) ──────────────────
-        foreach (['providers', 'accounts', 'packages', 'speed_maps', 'settings', 'customers', 'subscriptions', 'charges', 'payments', 'cable_customers', 'cable_payments', 'expenses', 'users'] as $t) {
+        foreach (['dealers', 'providers', 'accounts', 'packages', 'speed_maps', 'settings', 'customers', 'subscriptions', 'charges', 'payments', 'cable_customers', 'cable_payments', 'expenses', 'users'] as $t) {
             DB::statement("SELECT setval(pg_get_serial_sequence('$t','id'), COALESCE((SELECT MAX(id) FROM $t), 1))");
         }
 

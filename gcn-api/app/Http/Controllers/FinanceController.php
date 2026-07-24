@@ -46,11 +46,12 @@ class FinanceController extends Controller
     public function cashbook()
     {
         $mk = "to_char(%s,'YYYY-MM')";
+        $d = \App\Support\Tenant::id();
 
-        $netByMonth = DB::table('payments')->select(DB::raw(sprintf($mk, 'received_date').' as m'), DB::raw('sum(amount_received) as v'))->groupBy('m')->pluck('v', 'm');
-        $cableByMonth = DB::table('cable_payments')->select(DB::raw(sprintf($mk, 'date').' as m'), DB::raw('sum(amount) as v'))->groupBy('m')->pluck('v', 'm');
-        $costByMonth = DB::table('charges')->select(DB::raw(sprintf($mk, 'charge_date').' as m'), DB::raw('sum(coalesce(cost_amount,0)) as v'))->groupBy('m')->pluck('v', 'm');
-        $spendByMonth = DB::table('expenses')->select(DB::raw(sprintf($mk, 'date').' as m'), DB::raw('sum(amount) as v'))->groupBy('m')->pluck('v', 'm');
+        $netByMonth = DB::table('payments')->where('dealer_id', $d)->select(DB::raw(sprintf($mk, 'received_date').' as m'), DB::raw('sum(amount_received) as v'))->groupBy('m')->pluck('v', 'm');
+        $cableByMonth = DB::table('cable_payments')->where('dealer_id', $d)->select(DB::raw(sprintf($mk, 'date').' as m'), DB::raw('sum(amount) as v'))->groupBy('m')->pluck('v', 'm');
+        $costByMonth = DB::table('charges')->where('dealer_id', $d)->select(DB::raw(sprintf($mk, 'charge_date').' as m'), DB::raw('sum(coalesce(cost_amount,0)) as v'))->groupBy('m')->pluck('v', 'm');
+        $spendByMonth = DB::table('expenses')->where('dealer_id', $d)->select(DB::raw(sprintf($mk, 'date').' as m'), DB::raw('sum(amount) as v'))->groupBy('m')->pluck('v', 'm');
 
         $months = collect([$netByMonth, $cableByMonth, $costByMonth, $spendByMonth])
             ->flatMap(fn ($c) => $c->keys())->unique()->sort()->values();
@@ -64,9 +65,9 @@ class FinanceController extends Controller
             return ['month' => $m, 'netIncome' => $net, 'cableIncome' => $cable, 'connectCost' => $cost, 'spend' => $spend, 'profit' => $net + $cable - $cost - $spend];
         });
 
-        $byCategory = DB::table('expenses')->select('category', DB::raw('sum(amount) as v'))->groupBy('category')->pluck('v', 'category')->map(fn ($v) => (int) $v);
-        $byPerson = DB::table('expenses')->whereNotNull('person')->select('person', DB::raw('sum(amount) as v'))->groupBy('person')->pluck('v', 'person')->map(fn ($v) => (int) $v);
-        $totalSpend = (int) DB::table('expenses')->sum('amount');
+        $byCategory = DB::table('expenses')->where('dealer_id', $d)->select('category', DB::raw('sum(amount) as v'))->groupBy('category')->pluck('v', 'category')->map(fn ($v) => (int) $v);
+        $byPerson = DB::table('expenses')->where('dealer_id', $d)->whereNotNull('person')->select('person', DB::raw('sum(amount) as v'))->groupBy('person')->pluck('v', 'person')->map(fn ($v) => (int) $v);
+        $totalSpend = (int) DB::table('expenses')->where('dealer_id', $d)->sum('amount');
 
         return [
             'perMonth' => $perMonth,

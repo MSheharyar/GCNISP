@@ -16,8 +16,8 @@ use Illuminate\Support\Facades\Route;
 // ── Public ────────────────────────────────────────────────────────────────
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:6,1');
 
-// ── Protected (Sanctum token) ──────────────────────────────────────────────
-Route::middleware('auth:sanctum')->group(function () {
+// ── Protected (Sanctum token) — every request is scoped to the user's dealer ─
+Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
     Route::post('/logout', [AuthController::class, 'logout']);
 

@@ -28,14 +28,15 @@ class ChargeController extends Controller
             ->orderByDesc('created_at')->orderByDesc('id')
             ->get();
 
+        $d = \App\Support\Tenant::id();
         // Portal metadata per charge: the speed reported AND the real recharge
         // timestamp from the portal (Connect date/time, Fiber load date) — that's
         // the actual moment the card was charged, not when our sync wrote the row.
-        $syncMeta = DB::table('sync_rows')->whereIn('charge_id', $charges->pluck('id'))
+        $syncMeta = DB::table('sync_rows')->where('dealer_id', $d)->whereIn('charge_id', $charges->pluck('id'))
             ->get(['charge_id', 'speed_label', 'recharged_at'])->keyBy('charge_id');
 
-        return $charges->map(function ($c) use ($syncMeta) {
-            $pkg = $c->package_id ? DB::table('packages')->where('id', $c->package_id)->first() : null;
+        return $charges->map(function ($c) use ($syncMeta, $d) {
+            $pkg = $c->package_id ? DB::table('packages')->where('dealer_id', $d)->where('id', $c->package_id)->first() : null;
             $meta = $syncMeta->get($c->id);
             $rechargedAt = $meta && $meta->recharged_at ? \Illuminate\Support\Carbon::parse($meta->recharged_at) : null;
 
@@ -107,7 +108,7 @@ class ChargeController extends Controller
                 'packageId' => $data['packageId'] ?? null,
             ]);
 
-            $pkg = $charge->package_id ? DB::table('packages')->where('id', $charge->package_id)->first() : null;
+            $pkg = $charge->package_id ? DB::table('packages')->where('dealer_id', \App\Support\Tenant::id())->where('id', $charge->package_id)->first() : null;
 
             return response()->json([
                 'chargeId' => $charge->id,

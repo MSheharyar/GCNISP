@@ -13,8 +13,9 @@ class MonthlyController extends Controller
     // balance. `?month=YYYY-MM` selects the month (defaults to the latest).
     public function index(Request $request)
     {
+        $d = \App\Support\Tenant::id();
         // Months that actually have real (non-opening) charges, newest first.
-        $months = DB::table('charges')->where('source', '!=', 'opening')
+        $months = DB::table('charges')->where('dealer_id', $d)->where('source', '!=', 'opening')
             ->select(DB::raw("to_char(charge_date,'YYYY-MM') as ym"))
             ->distinct()->orderByDesc('ym')->pluck('ym');
 
@@ -26,12 +27,12 @@ class MonthlyController extends Controller
 
         // Running balance per customer = Σ charges − Σ payments through month-end
         // (includes the synthetic opening-balance entries so it ties to the ledger).
-        $chargeSums = DB::table('charges')->where('charge_date', '<=', $monthEnd)
+        $chargeSums = DB::table('charges')->where('dealer_id', $d)->where('charge_date', '<=', $monthEnd)
             ->select('customer_id', DB::raw('sum(amount_charged) s'))->groupBy('customer_id')->pluck('s', 'customer_id');
-        $paySums = DB::table('payments')->where('received_date', '<=', $monthEnd)
+        $paySums = DB::table('payments')->where('dealer_id', $d)->where('received_date', '<=', $monthEnd)
             ->select('customer_id', DB::raw('sum(amount_received) s'))->groupBy('customer_id')->pluck('s', 'customer_id');
 
-        $packages = DB::table('packages')->get()->keyBy('id');
+        $packages = DB::table('packages')->where('dealer_id', $d)->get()->keyBy('id');
 
         $charges = Charge::with(['customer:id,name,login_id,house_no,sector', 'account:id,name', 'payments'])
             ->where('source', '!=', 'opening')
@@ -68,7 +69,7 @@ class MonthlyController extends Controller
             'summary' => [
                 'count' => $charges->count(),
                 'charged' => (int) $charges->sum('amount_charged'),
-                'collected' => (int) DB::table('payments')->whereRaw("to_char(received_date,'YYYY-MM') = ?", [$ym])->sum('amount_received'),
+                'collected' => (int) DB::table('payments')->where('dealer_id', $d)->whereRaw("to_char(received_date,'YYYY-MM') = ?", [$ym])->sum('amount_received'),
                 'paidCount' => $charges->filter(fn ($c) => $c->payments->isNotEmpty())->count(),
             ],
         ];
