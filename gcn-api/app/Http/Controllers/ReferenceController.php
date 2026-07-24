@@ -3,13 +3,28 @@
 namespace App\Http\Controllers;
 
 use App\Models\Account;
+use App\Models\Dealer;
 use App\Models\Package;
 use App\Models\Provider;
 use App\Models\Setting;
 use App\Models\SpeedMap;
+use App\Support\Tenant;
 
 class ReferenceController extends Controller
 {
+    // The current dealer's branding — applied app-wide on load. Null values fall
+    // back to the default GCN theme + bundled logo on the client.
+    public function branding()
+    {
+        $dealer = Dealer::find(Tenant::id());
+
+        return [
+            'name' => $dealer?->name,
+            'primaryColor' => $dealer?->primary_color,
+            'logoUrl' => $dealer?->logo_url,
+        ];
+    }
+
     public function providers()
     {
         return Provider::orderBy('id')->get()->map(fn ($p) => [
@@ -27,7 +42,7 @@ class ReferenceController extends Controller
     public function packages()
     {
         return Package::orderBy('id')->get()->map(fn ($p) => [
-            'id' => $p->id, 'name' => $p->name, 'speedMbps' => $p->speed_mbps, 'price' => $p->price, 'isActive' => (bool) $p->is_active,
+            'id' => $p->id, 'name' => $p->name, 'speedMbps' => $p->speed_mbps, 'price' => $p->price, 'cost' => $p->cost, 'isActive' => (bool) $p->is_active,
         ]);
     }
 

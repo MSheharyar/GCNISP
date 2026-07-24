@@ -1,7 +1,8 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { auth, bootstrapRefData, login as apiLogin, logout as apiLogout, me, type AuthUser } from './api';
+import { api, auth, bootstrapRefData, login as apiLogin, logout as apiLogout, me, type AuthUser } from './api';
 import { LogoMark } from '../components/Logo';
+import { applyBranding } from '../lib/branding';
 
 interface AuthCtx {
   user: AuthUser | null;
@@ -23,6 +24,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           const [u] = await Promise.all([me(), bootstrapRefData()]);
           if (alive) setUser(u);
+          try {
+            applyBranding(await api.branding());
+          } catch {
+            /* branding is best-effort — never block sign-in */
+          }
         } catch {
           auth.clear();
         }
@@ -36,9 +42,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const value: AuthCtx = {
     user,
-    login: async (email, password) => setUser(await apiLogin(email, password)),
+    login: async (email, password) => {
+      const u = await apiLogin(email, password);
+      setUser(u);
+      try {
+        applyBranding(await api.branding());
+      } catch {
+        /* best-effort */
+      }
+    },
     logout: async () => {
       await apiLogout();
+      applyBranding(null); // reset to the default theme
       setUser(null);
     },
   };

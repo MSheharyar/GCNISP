@@ -41,6 +41,15 @@ export interface Package {
   name: PackageColor;
   speedMbps: number;
   price: number;
+  cost?: number | null; // dealer's upstream cost (cutting amount); margin = price - cost
+  isActive: boolean;
+}
+
+export interface PackagePayload {
+  name: string;
+  speedMbps: number;
+  price: number;
+  cost: number | null;
   isActive: boolean;
 }
 

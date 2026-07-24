@@ -69,6 +69,8 @@ class DealerController extends Controller
             'contactName' => ['sometimes', 'nullable', 'string', 'max:255'],
             'contactPhone' => ['sometimes', 'nullable', 'string', 'max:40'],
             'slug' => ['sometimes', 'string', 'alpha_dash', 'max:60', Rule::unique('dealers', 'slug')->ignore($dealer->id)],
+            'primaryColor' => ['sometimes', 'nullable', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
+            'logoUrl' => ['sometimes', 'nullable', 'url', 'max:2048'],
         ]);
 
         $dealer->fill([
@@ -77,6 +79,8 @@ class DealerController extends Controller
             'contact_name' => array_key_exists('contactName', $data) ? $data['contactName'] : $dealer->contact_name,
             'contact_phone' => array_key_exists('contactPhone', $data) ? $data['contactPhone'] : $dealer->contact_phone,
             'slug' => $data['slug'] ?? $dealer->slug,
+            'primary_color' => array_key_exists('primaryColor', $data) ? $data['primaryColor'] : $dealer->primary_color,
+            'logo_url' => array_key_exists('logoUrl', $data) ? $data['logoUrl'] : $dealer->logo_url,
         ])->save();
 
         return $this->payload($dealer->fresh());
@@ -91,6 +95,8 @@ class DealerController extends Controller
             'status' => $d->status,
             'contactName' => $d->contact_name,
             'contactPhone' => $d->contact_phone,
+            'primaryColor' => $d->primary_color,
+            'logoUrl' => $d->logo_url,
             'users' => DB::table('users')->where('dealer_id', $d->id)->count(),
             'customers' => DB::table('customers')->where('dealer_id', $d->id)->count(),
             'createdAt' => optional($d->created_at)->toDateString(),

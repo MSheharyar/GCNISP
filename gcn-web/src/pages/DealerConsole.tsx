@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Building2, UserRound, Copy, Check, Loader2, Power, PowerOff } from 'lucide-react';
+import { Plus, Building2, UserRound, Copy, Check, Loader2, Power, PowerOff, Palette } from 'lucide-react';
 import { api, type Dealer, type DealerCreatePayload } from '../services/api';
 import { Card, CardHeader, Button, Modal, cn } from '../components/ui/primitives';
 
@@ -21,6 +21,7 @@ export default function DealerConsole() {
   const [dealers, setDealers] = useState<Dealer[] | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [created, setCreated] = useState<Dealer | null>(null);
+  const [branding, setBranding] = useState<Dealer | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
 
   const load = () => api.dealers().then(setDealers);
@@ -90,29 +91,34 @@ export default function DealerConsole() {
                     {d.status}
                   </span>
                 </td>
-                <td className="px-5 py-3 text-right">
-                  {d.id === 1 ? (
-                    <span className="text-[12px] text-slate-400">Owner</span>
-                  ) : (
-                    <Button
-                      variant={d.status === 'suspended' ? 'primary' : 'secondary'}
-                      size="sm"
-                      onClick={() => toggleStatus(d)}
-                      disabled={busyId === d.id}
-                    >
-                      {busyId === d.id ? (
-                        <Loader2 size={14} className="animate-spin" />
-                      ) : d.status === 'suspended' ? (
-                        <>
-                          <Power size={14} /> Activate
-                        </>
-                      ) : (
-                        <>
-                          <PowerOff size={14} /> Suspend
-                        </>
-                      )}
+                <td className="px-5 py-3">
+                  <div className="flex items-center justify-end gap-2">
+                    <Button variant="ghost" size="sm" onClick={() => setBranding(d)}>
+                      <Palette size={14} /> Brand
                     </Button>
-                  )}
+                    {d.id === 1 ? (
+                      <span className="text-[12px] text-slate-400">Owner</span>
+                    ) : (
+                      <Button
+                        variant={d.status === 'suspended' ? 'primary' : 'secondary'}
+                        size="sm"
+                        onClick={() => toggleStatus(d)}
+                        disabled={busyId === d.id}
+                      >
+                        {busyId === d.id ? (
+                          <Loader2 size={14} className="animate-spin" />
+                        ) : d.status === 'suspended' ? (
+                          <>
+                            <Power size={14} /> Activate
+                          </>
+                        ) : (
+                          <>
+                            <PowerOff size={14} /> Suspend
+                          </>
+                        )}
+                      </Button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
@@ -138,6 +144,15 @@ export default function DealerConsole() {
       />
 
       <CredentialsModal dealer={created} onClose={() => setCreated(null)} />
+
+      <BrandingModal
+        dealer={branding}
+        onClose={() => setBranding(null)}
+        onSaved={(u) => {
+          setBranding(null);
+          setDealers((prev) => prev!.map((x) => (x.id === u.id ? u : x)));
+        }}
+      />
     </div>
   );
 }
@@ -277,5 +292,112 @@ function Row({ icon, label, value }: { icon: React.ReactNode; label: string; val
       <span className="w-24 text-[12px] text-slate-400">{label}</span>
       <span className="font-mono text-[13px] text-slate-700">{value}</span>
     </div>
+  );
+}
+
+const DEFAULT_COLOR = '#1a66e0';
+
+function BrandingModal({ dealer, onClose, onSaved }: { dealer: Dealer | null; onClose: () => void; onSaved: (d: Dealer) => void }) {
+  const [color, setColor] = useState(DEFAULT_COLOR);
+  const [logo, setLogo] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!dealer) return;
+    setColor(dealer.primaryColor ?? DEFAULT_COLOR);
+    setLogo(dealer.logoUrl ?? '');
+    setError(null);
+  }, [dealer]);
+
+  if (!dealer) return null;
+
+  const save = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      const updated = await api.updateDealer(dealer.id, {
+        primaryColor: color,
+        logoUrl: logo.trim() || null,
+      });
+      onSaved(updated);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not save branding.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const reset = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      const updated = await api.updateDealer(dealer.id, { primaryColor: null, logoUrl: null });
+      onSaved(updated);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not reset branding.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal open={!!dealer} onClose={onClose} title={`Branding — ${dealer.name}`}>
+      <div className="space-y-4">
+        <div>
+          <label className="mb-1.5 block text-[12.5px] font-medium text-slate-600">Primary colour</label>
+          <div className="flex items-center gap-3">
+            <input type="color" value={color} onChange={(e) => setColor(e.target.value)} className="h-10 w-14 cursor-pointer rounded-lg border border-slate-200 bg-white p-1" />
+            <input
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 font-mono text-sm text-slate-700 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
+              value={color}
+              onChange={(e) => setColor(e.target.value)}
+              placeholder="#1a66e0"
+            />
+          </div>
+          <div className="mt-2 flex gap-1.5">
+            {['#1a66e0', '#0f766e', '#7c3aed', '#dc2626', '#ea580c', '#059669', '#0891b2'].map((c) => (
+              <button key={c} type="button" onClick={() => setColor(c)} className="h-6 w-6 rounded-full ring-1 ring-black/10" style={{ background: c }} aria-label={c} />
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <label className="mb-1.5 block text-[12.5px] font-medium text-slate-600">Logo image URL</label>
+          <div className="flex items-center gap-3">
+            <img
+              src={logo || undefined}
+              alt=""
+              className="h-10 w-10 shrink-0 rounded-full bg-slate-100 object-cover ring-1 ring-black/10"
+              onError={(e) => ((e.currentTarget.style.visibility = 'hidden'))}
+              onLoad={(e) => ((e.currentTarget.style.visibility = 'visible'))}
+            />
+            <input
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
+              value={logo}
+              onChange={(e) => setLogo(e.target.value)}
+              placeholder="https://…/logo.png"
+            />
+          </div>
+          <p className="mt-1 text-[11.5px] text-slate-400">Square image works best. Leave blank to keep the default mark.</p>
+        </div>
+
+        {error && <div className="rounded-lg bg-rose-50 px-3 py-2 text-[13px] text-rose-700">{error}</div>}
+
+        <div className="flex items-center justify-between pt-1">
+          <Button variant="ghost" onClick={reset} disabled={saving}>
+            Reset to default
+          </Button>
+          <div className="flex gap-2">
+            <Button variant="secondary" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button variant="primary" onClick={save} disabled={saving}>
+              {saving ? <Loader2 size={15} className="animate-spin" /> : <Palette size={15} />} Save branding
+            </Button>
+          </div>
+        </div>
+      </div>
+    </Modal>
   );
 }

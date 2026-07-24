@@ -1,9 +1,9 @@
 import { Save, AlertTriangle } from 'lucide-react';
 import { api, lookup } from '../services/api';
 import { useApi } from '../lib/useApi';
-import { formatPKR } from '../lib/format';
 import { Card, CardHeader, PackageTag, Button, cn } from '../components/ui/primitives';
 import PortalCredentials from '../components/PortalCredentials';
+import PackageManager from '../components/PackageManager';
 
 const inputCls =
   'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100';
@@ -37,36 +37,8 @@ export default function Settings() {
         </div>
       </Card>
 
-      {/* Packages (global price list) */}
-      <Card className="overflow-hidden">
-        <CardHeader title="Global package price list" subtitle="One shared list for all accounts. Color = package identity." />
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="border-b border-slate-100 text-[12px] uppercase tracking-wide text-slate-400">
-              <th className="px-5 py-2.5 font-medium">Package</th>
-              <th className="px-4 py-2.5 font-medium">Speed</th>
-              <th className="px-4 py-2.5 text-right font-medium">Standard price</th>
-              <th className="px-5 py-2.5 text-right font-medium">Status</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-50">
-            {packages?.map((p) => (
-              <tr key={p.id} className="hover:bg-slate-50">
-                <td className="px-5 py-3">
-                  <PackageTag name={p.name} />
-                </td>
-                <td className="px-4 py-3 text-[13px] text-slate-600">Up to {p.speedMbps} MB</td>
-                <td className="px-4 py-3 text-right font-medium text-slate-800">{formatPKR(p.price)}</td>
-                <td className="px-5 py-3 text-right">
-                  <span className="inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
-                    {p.isActive ? 'Active' : 'Inactive'}
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </Card>
+      {/* Packages (editable price list with cost + margin) */}
+      <PackageManager />
 
       {/* Connect speed → package mapping */}
       <Card className="overflow-hidden">

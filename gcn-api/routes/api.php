@@ -9,6 +9,7 @@ use App\Http\Controllers\DealerController;
 use App\Http\Controllers\FinanceController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\MonthlyController;
+use App\Http\Controllers\PackageController;
 use App\Http\Controllers\ReferenceController;
 use App\Http\Controllers\StaffController;
 use App\Http\Controllers\SyncController;
@@ -36,6 +37,7 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
     Route::get('/staff', [StaffController::class, 'index']);
     Route::get('/speed-map', [ReferenceController::class, 'speedMap']);
     Route::get('/org-settings', [ReferenceController::class, 'orgSettings']);
+    Route::get('/branding', [ReferenceController::class, 'branding']);
     Route::get('/connect-sync', [SyncController::class, 'index']);
     Route::get('/portal-stats', [SyncController::class, 'stats']);
 
@@ -87,5 +89,8 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
 
         Route::get('/portal-accounts', [SyncController::class, 'portalAccounts']);
         Route::put('/portal-accounts/{account}', [SyncController::class, 'updatePortalAccount']);
+
+        Route::post('/packages', [PackageController::class, 'store']);
+        Route::put('/packages/{package}', [PackageController::class, 'update']);
     });
 });

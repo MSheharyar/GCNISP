@@ -11,6 +11,7 @@ import type {
   Expense,
   LedgerEntry,
   Package,
+  PackagePayload,
   Provider,
   SpeedMap,
   StaffUser,
@@ -243,10 +244,18 @@ export interface Dealer {
   status: 'active' | 'suspended' | 'trial';
   contactName: string | null;
   contactPhone: string | null;
+  primaryColor: string | null;
+  logoUrl: string | null;
   users: number;
   customers: number;
   createdAt: string | null;
   admin?: { id: number; name: string; email: string };
+}
+
+export interface Branding {
+  name: string | null;
+  primaryColor: string | null;
+  logoUrl: string | null;
 }
 
 export interface DealerCreatePayload {
@@ -302,13 +311,20 @@ export const api = {
   portalAccounts: () => req<PortalAccount[]>('/portal-accounts'),
   updatePortalAccount: (id: number, payload: PortalAccountPayload) =>
     req<PortalAccount>(`/portal-accounts/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  createPackage: (payload: PackagePayload) =>
+    req<Package>('/packages', { method: 'POST', body: JSON.stringify(payload) }),
+  updatePackage: (id: number, payload: PackagePayload) =>
+    req<Package>(`/packages/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
 
   // ── SaaS owner console (super-admin only) ───────────────────────────────
   dealers: () => req<Dealer[]>('/admin/dealers'),
   createDealer: (payload: DealerCreatePayload) =>
     req<Dealer>('/admin/dealers', { method: 'POST', body: JSON.stringify(payload) }),
-  updateDealer: (id: number, payload: Partial<{ name: string; status: string; contactName: string; contactPhone: string; slug: string }>) =>
-    req<Dealer>(`/admin/dealers/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  updateDealer: (
+    id: number,
+    payload: Partial<{ name: string; status: string; contactName: string; contactPhone: string; slug: string; primaryColor: string | null; logoUrl: string | null }>
+  ) => req<Dealer>(`/admin/dealers/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  branding: () => req<Branding>('/branding'),
 
   customers: () => req<Customer[]>('/customers'),
   customer: (id: number) => req<Customer>(`/customers/${id}`),
