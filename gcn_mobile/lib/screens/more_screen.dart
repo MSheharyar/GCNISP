@@ -5,6 +5,8 @@ import '../api/api.dart';
 import 'login_screen.dart';
 import 'monthly_register_screen.dart';
 import 'cash_book_screen.dart';
+import 'customers_screen.dart';
+import 'cable_screen.dart';
 
 class MoreScreen extends StatelessWidget {
   const MoreScreen({super.key});
@@ -49,11 +51,11 @@ class MoreScreen extends StatelessWidget {
               if (!isViewer) ...[
                 const Divider(height: 1, color: GcnColors.hairline, indent: 60),
                 _Item(Icons.receipt_long_rounded, 'Cash Book', 'Kharcha & profit', onTap: () => open(const CashBookScreen())),
+                const Divider(height: 1, color: GcnColors.hairline, indent: 60),
+                _Item(Icons.tv_rounded, 'TV Cable', 'Cable subscribers', onTap: () => open(const CableScreen())),
+                const Divider(height: 1, color: GcnColors.hairline, indent: 60),
+                _Item(Icons.people_rounded, 'Customers', 'All internet subscribers', onTap: () => open(const CustomersScreen())),
               ],
-              const Divider(height: 1, color: GcnColors.hairline, indent: 60),
-              _Item(Icons.tv_rounded, 'TV Cable', 'Cable subscribers', onTap: soon),
-              const Divider(height: 1, color: GcnColors.hairline, indent: 60),
-              _Item(Icons.people_rounded, 'Customers', 'All internet subscribers', onTap: soon),
             ]),
           ),
           const SizedBox(height: 16),

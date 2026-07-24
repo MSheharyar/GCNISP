@@ -9,18 +9,19 @@ import 'payment_receipt.dart';
 
 const _payMethods = ['Cash', 'JazzCash', 'Bank', 'Other'];
 
-Future<void> showRecordPaymentSheet(BuildContext context) {
+Future<void> showRecordPaymentSheet(BuildContext context, {Customer? preselect}) {
   return showModalBottomSheet(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (_) => _RecordPaymentSheet(host: context),
+    builder: (_) => _RecordPaymentSheet(host: context, preselect: preselect),
   );
 }
 
 class _RecordPaymentSheet extends StatefulWidget {
   final BuildContext host;
-  const _RecordPaymentSheet({required this.host});
+  final Customer? preselect;
+  const _RecordPaymentSheet({required this.host, this.preselect});
 
   @override
   State<_RecordPaymentSheet> createState() => _RecordPaymentSheetState();
@@ -39,6 +40,10 @@ class _RecordPaymentSheetState extends State<_RecordPaymentSheet> {
   void initState() {
     super.initState();
     _customers = api.customers();
+    if (widget.preselect != null) {
+      _selected = widget.preselect;
+      if (widget.preselect!.balance > 0) _amount.text = widget.preselect!.balance.toString();
+    }
   }
 
   @override

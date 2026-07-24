@@ -134,6 +134,97 @@ class Customer {
       );
 }
 
+class Account {
+  final int id;
+  final String name;
+  Account({required this.id, required this.name});
+  factory Account.fromJson(Map<String, dynamic> j) => Account(id: _int(j['id']), name: _str(j['name']));
+}
+
+class PackageRef {
+  final int id;
+  final String name;
+  final int? speedMbps;
+  PackageRef({required this.id, required this.name, required this.speedMbps});
+  factory PackageRef.fromJson(Map<String, dynamic> j) => PackageRef(id: _int(j['id']), name: _str(j['name']), speedMbps: _intN(j['speedMbps']));
+}
+
+class CustomerDetail {
+  final int id, balance, monthsOverdue;
+  final String name, loginId, house, sector, status, type;
+  final String? phone, companyName, createdAt;
+  final int? currentAccountId, currentPackageId;
+  final bool subscriptionActive;
+  CustomerDetail({
+    required this.id,
+    required this.name,
+    required this.loginId,
+    required this.house,
+    required this.sector,
+    required this.status,
+    required this.type,
+    required this.balance,
+    required this.monthsOverdue,
+    required this.phone,
+    required this.companyName,
+    required this.createdAt,
+    required this.currentAccountId,
+    required this.currentPackageId,
+    required this.subscriptionActive,
+  });
+  factory CustomerDetail.fromJson(Map<String, dynamic> j) => CustomerDetail(
+        id: _int(j['id']),
+        name: _str(j['name']),
+        loginId: _str(j['loginId']),
+        house: _str(j['houseNo']),
+        sector: _str(j['sector']),
+        status: _str(j['status']),
+        type: _str(j['type']),
+        balance: _int(j['outstandingBalance']),
+        monthsOverdue: _int(j['monthsOverdue']),
+        phone: j['phone']?.toString(),
+        companyName: j['companyName']?.toString(),
+        createdAt: j['createdAt']?.toString(),
+        currentAccountId: _intN(j['currentAccountId']),
+        currentPackageId: _intN(j['currentPackageId']),
+        subscriptionActive: (j['subscription'] is Map) && (j['subscription']['isActive'] == true),
+      );
+}
+
+class LedgerEntry {
+  final String id, date, kind, label;
+  final int debit, credit, balance;
+  final String? method;
+  LedgerEntry({required this.id, required this.date, required this.kind, required this.label, required this.debit, required this.credit, required this.balance, required this.method});
+  factory LedgerEntry.fromJson(Map<String, dynamic> j) => LedgerEntry(
+        id: _str(j['id']),
+        date: _str(j['date']),
+        kind: _str(j['kind']),
+        label: _str(j['label']),
+        debit: _int(j['debit']),
+        credit: _int(j['credit']),
+        balance: _int(j['balance']),
+        method: j['method']?.toString(),
+      );
+}
+
+class CableCustomer {
+  final int id, monthlyFee, balance;
+  final String house, sector, status;
+  final String? name, lastPaidDate;
+  CableCustomer({required this.id, required this.house, required this.sector, required this.status, required this.monthlyFee, required this.balance, required this.name, required this.lastPaidDate});
+  factory CableCustomer.fromJson(Map<String, dynamic> j) => CableCustomer(
+        id: _int(j['id']),
+        house: _str(j['houseNo']),
+        sector: _str(j['sector']),
+        status: _str(j['status']),
+        monthlyFee: _int(j['monthlyFee']),
+        balance: _int(j['balance']),
+        name: j['name']?.toString(),
+        lastPaidDate: j['lastPaidDate']?.toString(),
+      );
+}
+
 class MonthlyRow {
   final int chargeId, customerId, amount, balance;
   final String loginId, name, house, sector, account, chargeDate;

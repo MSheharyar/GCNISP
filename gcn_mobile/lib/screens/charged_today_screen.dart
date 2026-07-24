@@ -4,6 +4,7 @@ import '../widgets.dart';
 import '../format.dart';
 import '../api/api.dart';
 import '../api/models.dart';
+import 'customer_detail_screen.dart';
 
 class ChargedTodayScreen extends StatefulWidget {
   const ChargedTodayScreen({super.key});
@@ -173,16 +174,24 @@ class _RechargeCard extends StatelessWidget {
     return GcnCard(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          Avatar(initials(r.name), size: 38),
-          const SizedBox(width: 12),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              Flexible(child: Text(r.name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: GcnColors.ink))),
-              const SizedBox(width: 6),
-              const Pill('SYNC', bg: GcnColors.brand50, fg: GcnColors.brand),
-            ]),
-            Text('${r.loginId} · ${r.house}, ${r.sector}', style: const TextStyle(fontSize: 12, color: GcnColors.muted)),
-          ])),
+          Expanded(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => CustomerDetailScreen(customerId: r.customerId, name: r.name))),
+              child: Row(children: [
+                Avatar(initials(r.name), size: 38),
+                const SizedBox(width: 12),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    Flexible(child: Text(r.name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: GcnColors.ink))),
+                    const SizedBox(width: 6),
+                    const Pill('SYNC', bg: GcnColors.brand50, fg: GcnColors.brand),
+                  ]),
+                  Text('${r.loginId} · ${r.house}, ${r.sector}', style: const TextStyle(fontSize: 12, color: GcnColors.muted)),
+                ])),
+              ]),
+            ),
+          ),
           Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
             Text(r.time.isEmpty ? '—' : r.time, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: GcnColors.inkSoft)),
             Text(r.account, style: const TextStyle(fontSize: 11, color: GcnColors.muted)),

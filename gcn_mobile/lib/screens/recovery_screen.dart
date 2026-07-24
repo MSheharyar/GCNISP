@@ -4,6 +4,7 @@ import '../widgets.dart';
 import '../format.dart';
 import '../api/api.dart';
 import '../api/models.dart';
+import 'customer_detail_screen.dart';
 
 class RecoveryScreen extends StatefulWidget {
   const RecoveryScreen({super.key});
@@ -88,8 +89,13 @@ class _Card extends StatelessWidget {
   const _Card(this.c);
   @override
   Widget build(BuildContext context) {
-    return GcnCard(
-      child: Row(children: [
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => CustomerDetailScreen(customerId: c.id, name: c.name))),
+        child: GcnCard(
+          child: Row(children: [
         Avatar(initials(c.name), bg: GcnColors.red50, fg: GcnColors.red),
         const SizedBox(width: 12),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -103,7 +109,9 @@ class _Card extends StatelessWidget {
           const SizedBox(height: 3),
           OverdueBadge(c.monthsOverdue),
         ]),
-      ]),
+          ]),
+        ),
+      ),
     );
   }
 }
