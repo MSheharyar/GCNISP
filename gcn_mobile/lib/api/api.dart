@@ -150,6 +150,12 @@ class Api {
   Future<List<CableCustomer>> cableCustomers() async =>
       ((await _get('/cable-customers')) as List).map((e) => CableCustomer.fromJson(e as Map<String, dynamic>)).toList();
 
+  Future<CableCustomer> cableCustomer(int id) async =>
+      CableCustomer.fromJson(await _get('/cable-customers/$id') as Map<String, dynamic>);
+
+  Future<List<LedgerEntry>> cableLedger(int id) async =>
+      ((await _get('/cable-customers/$id/ledger')) as List).map((e) => LedgerEntry.fromJson(e as Map<String, dynamic>)).toList();
+
   // ── Writes ────────────────────────────────────────────────────────────
   /// Record a payment (collect arrears) — payment-only, no new charge.
   Future<void> recordPayment({required int customerId, required int amount, required String method, String? date}) async {
@@ -159,6 +165,16 @@ class Api {
       'receivedDate': date ?? DateTime.now().toIso8601String().substring(0, 10),
       'method': method.toLowerCase() == 'jazzcash' ? 'jazz' : method.toLowerCase(),
     });
+  }
+
+  /// Record a TV-cable collection against a subscriber; returns the fresh row.
+  Future<CableCustomer> recordCablePayment({required int cableId, required int amount, String? date, String? label}) async {
+    final data = await _post('/cable-customers/$cableId/payment', {
+      'amount': amount,
+      'date': date ?? DateTime.now().toIso8601String().substring(0, 10),
+      if (label != null && label.isNotEmpty) 'label': label,
+    });
+    return CableCustomer.fromJson(data as Map<String, dynamic>);
   }
 
   /// Trigger a live portal sync (scrapes Connect + Fiber recharges & dashboard).

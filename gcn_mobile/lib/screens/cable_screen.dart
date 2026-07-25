@@ -4,6 +4,7 @@ import '../widgets.dart';
 import '../format.dart';
 import '../api/api.dart';
 import '../api/models.dart';
+import 'cable_detail_screen.dart';
 
 class CableScreen extends StatefulWidget {
   const CableScreen({super.key});
@@ -88,7 +89,14 @@ class _CableScreenState extends State<CableScreen> {
                 Text('${rows.length} of ${all.length}', style: const TextStyle(fontSize: 12, color: GcnColors.muted)),
               ]),
               const SizedBox(height: 14),
-              for (final c in rows) Padding(padding: const EdgeInsets.only(bottom: 10), child: _Row(c)),
+              for (final c in rows)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: _Row(c, onTap: () async {
+                    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => CableDetailScreen(customer: c)));
+                    if (mounted) setState(() => _future = api.cableCustomers());
+                  }),
+                ),
               if (rows.isEmpty) const Padding(padding: EdgeInsets.symmetric(vertical: 40), child: Center(child: Text('No cable customers match.', style: TextStyle(color: GcnColors.muted)))),
             ],
           );
@@ -100,10 +108,14 @@ class _CableScreenState extends State<CableScreen> {
 
 class _Row extends StatelessWidget {
   final CableCustomer c;
-  const _Row(this.c);
+  final VoidCallback? onTap;
+  const _Row(this.c, {this.onTap});
   @override
   Widget build(BuildContext context) {
-    return GcnCard(
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: GcnCard(
       child: Row(children: [
         Avatar(c.name != null && c.name!.isNotEmpty ? initials(c.name!) : c.house, bg: GcnColors.violet50, fg: GcnColors.violet, size: 40),
         const SizedBox(width: 12),
@@ -116,7 +128,10 @@ class _Row extends StatelessWidget {
           const SizedBox(height: 2),
           Text(c.balance > 0 ? 'owes ${pkr(c.balance)}' : 'clear', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: c.balance > 0 ? GcnColors.red : GcnColors.emerald)),
         ]),
+        const SizedBox(width: 4),
+        const Icon(Icons.chevron_right_rounded, color: GcnColors.muted, size: 20),
       ]),
+      ),
     );
   }
 }

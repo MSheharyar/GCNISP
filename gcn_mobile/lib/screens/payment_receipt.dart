@@ -13,19 +13,21 @@ Future<void> showPaymentReceipt(
   required int amount,
   required String method,
   required String recordedBy,
+  String referenceLabel = 'Login ID',
+  String title = 'Payment received',
 }) {
   return showModalBottomSheet(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (_) => _ReceiptSheet(name: name, loginId: loginId, amount: amount, method: method, recordedBy: recordedBy),
+    builder: (_) => _ReceiptSheet(name: name, loginId: loginId, amount: amount, method: method, recordedBy: recordedBy, referenceLabel: referenceLabel, title: title),
   );
 }
 
 class _ReceiptSheet extends StatefulWidget {
-  final String name, loginId, method, recordedBy;
+  final String name, loginId, method, recordedBy, referenceLabel, title;
   final int amount;
-  const _ReceiptSheet({required this.name, required this.loginId, required this.amount, required this.method, required this.recordedBy});
+  const _ReceiptSheet({required this.name, required this.loginId, required this.amount, required this.method, required this.recordedBy, required this.referenceLabel, required this.title});
 
   @override
   State<_ReceiptSheet> createState() => _ReceiptSheetState();
@@ -84,14 +86,14 @@ class _ReceiptSheetState extends State<_ReceiptSheet> {
                   const SizedBox(height: 18),
                   Container(width: 52, height: 52, decoration: const BoxDecoration(color: GcnColors.emerald50, shape: BoxShape.circle), child: const Icon(Icons.check_rounded, color: GcnColors.emerald, size: 30)),
                   const SizedBox(height: 12),
-                  const Text('Payment received', style: TextStyle(fontSize: 14, color: GcnColors.muted, fontWeight: FontWeight.w500)),
+                  Text(widget.title, style: const TextStyle(fontSize: 14, color: GcnColors.muted, fontWeight: FontWeight.w500)),
                   const SizedBox(height: 4),
                   Text(pkr(widget.amount), style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w800, color: GcnColors.emerald)),
                   const SizedBox(height: 18),
                   const Divider(color: GcnColors.hairline),
                   const SizedBox(height: 8),
                   _row('Customer', widget.name),
-                  _row('Login ID', widget.loginId),
+                  _row(widget.referenceLabel, widget.loginId),
                   _row('Method', widget.method),
                   _row('Date', now),
                   _row('Received by', widget.recordedBy),
