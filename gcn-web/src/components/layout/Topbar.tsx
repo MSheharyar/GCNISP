@@ -1,12 +1,15 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Bell, Plus, LogOut } from 'lucide-react';
+import { Search, Bell, Plus, LogOut, Zap } from 'lucide-react';
 import { Avatar } from '../ui/primitives';
 import { useAuth } from '../../services/auth';
 import { initials } from '../../lib/format';
+import QuickPayment from '../QuickPayment';
 
 export default function Topbar() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const [quickOpen, setQuickOpen] = useState(false);
   const doLogout = async () => {
     await logout();
     navigate('/login');
@@ -31,12 +34,21 @@ export default function Topbar() {
 
       <div className="ml-auto flex items-center gap-2">
         {user?.role !== 'viewer' && (
-          <button
-            onClick={() => navigate('/log')}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3.5 py-2 text-sm font-medium text-white shadow-sm hover:bg-brand-700"
-          >
-            <Plus size={16} /> Log Charge + Payment
-          </button>
+          <>
+            <button
+              onClick={() => setQuickOpen(true)}
+              title="Quick payment — record a collection fast"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-100"
+            >
+              <Zap size={16} /> Quick payment
+            </button>
+            <button
+              onClick={() => navigate('/log')}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3.5 py-2 text-sm font-medium text-white shadow-sm hover:bg-brand-700"
+            >
+              <Plus size={16} /> Log Charge + Payment
+            </button>
+          </>
         )}
         <button className="relative rounded-lg p-2 text-slate-500 hover:bg-slate-100">
           <Bell size={18} />
@@ -57,6 +69,8 @@ export default function Topbar() {
           <LogOut size={18} />
         </button>
       </div>
+
+      <QuickPayment open={quickOpen} onClose={() => setQuickOpen(false)} />
     </header>
   );
 }
