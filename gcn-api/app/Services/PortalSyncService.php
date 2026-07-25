@@ -34,17 +34,33 @@ class PortalSyncService
             return null;
         }
 
+        // Catch-up window: from the last sync up to today, so a click never misses
+        // recharges that happened since you last synced. An explicit --date (CLI)
+        // pins the run to that single day instead.
+        $to = now()->toDateString();
+        [$from, $to] = $date ? [$date, $date] : [$this->lastSyncedDate($account) ?? $to, $to];
+
         return match ($cred['source']) {
-            'connect' => $this->runConnect($account, $cred['user'], $cred['pass'], $date),
-            'fiberbeam' => $this->runFiberBeam($account, $date, $cred['dealer'], $cred['user'], $cred['pass']),
+            'connect' => $this->runConnect($account, $cred['user'], $cred['pass'], $from, $to),
+            'fiberbeam' => $this->runFiberBeam($account, $from, $to, $cred['dealer'], $cred['user'], $cred['pass']),
             default => null,
         };
     }
 
-    /** Sync one Connect reseller account (GCNDIGITAL / MRGNET). */
-    public function runConnect(Account $account, string $user, string $pass, ?string $date = null): SyncRun
+    /** The latest day we successfully synced this account (the catch-up watermark). */
+    private function lastSyncedDate(Account $account): ?string
     {
-        return $this->guarded('connect', $account, $date, function ($forDate) use ($user, $pass) {
+        $d = SyncRun::where('account_id', $account->id)->whereIn('status', ['success', 'partial'])->max('for_date');
+
+        return $d ? Carbon::parse($d)->toDateString() : null;
+    }
+
+    /** Sync one Connect reseller account (GCNDIGITAL / MRGNET) over a date range. */
+    public function runConnect(Account $account, string $user, string $pass, string $from, string $to): SyncRun
+    {
+        // Connect's report returns the recent ~100 recharges (no server-side date
+        // filter); we window them client-side in process().
+        return $this->guarded('connect', $account, $from, $to, function () use ($user, $pass) {
             return collect($this->connect->fetchRecharges($user, $pass))->map(fn ($r) => [
                 'portalUser' => $r['userName'],
                 'speedLabel' => $r['packageLabel'],
@@ -54,11 +70,11 @@ class PortalSyncService
         });
     }
 
-    /** Sync a Fiber Beam panel (defaults to GCN's .env creds, or a dealer's own). */
-    public function runFiberBeam(Account $account, ?string $date = null, ?string $dealer = null, ?string $user = null, ?string $pass = null): SyncRun
+    /** Sync a Fiber Beam panel over a date range (its own creds, or GCN's .env). */
+    public function runFiberBeam(Account $account, string $from, string $to, ?string $dealer = null, ?string $user = null, ?string $pass = null): SyncRun
     {
-        return $this->guarded('fiberbeam', $account, $date, function ($forDate) use ($dealer, $user, $pass) {
-            return collect($this->fiber->fetchRecharges($forDate, $forDate, $dealer, $user, $pass))->map(fn ($r) => [
+        return $this->guarded('fiberbeam', $account, $from, $to, function () use ($from, $to, $dealer, $user, $pass) {
+            return collect($this->fiber->fetchRecharges($from, $to, $dealer, $user, $pass))->map(fn ($r) => [
                 'portalUser' => $r['userId'],
                 'speedLabel' => $r['packageLabel'],
                 'cost' => $r['price'],
@@ -135,20 +151,20 @@ class PortalSyncService
         );
     }
 
-    private function guarded(string $source, Account $account, ?string $date, callable $fetch): SyncRun
+    private function guarded(string $source, Account $account, string $from, string $to, callable $fetch): SyncRun
     {
         // Pin the tenant to THIS account's dealer for the whole run so customer /
         // charge lookups (and the new rows) stay within the right dealer — critical
         // in the scheduler where no request has set the tenant.
-        return Tenant::run($account->dealer_id, function () use ($source, $account, $date, $fetch) {
-            $forDate = $date ?? now()->toDateString();
+        return Tenant::run($account->dealer_id, function () use ($source, $account, $from, $to, $fetch) {
+            // for_date stores the newest day scanned — it's the catch-up watermark.
             $run = SyncRun::create([
-                'account_id' => $account->id, 'source' => $source, 'for_date' => $forDate,
+                'account_id' => $account->id, 'source' => $source, 'for_date' => $to,
                 'started_at' => now(), 'status' => 'running',
             ]);
             try {
-                $rows = $fetch($forDate);
-                $this->process($run, $account, $rows, $forDate);
+                $rows = $fetch();
+                $this->process($run, $account, $rows, $from, $to);
             } catch (Throwable $e) {
                 $run->update(['status' => 'failed', 'finished_at' => now(), 'error_message' => $e->getMessage()]);
             }
@@ -157,16 +173,18 @@ class PortalSyncService
         });
     }
 
-    private function process(SyncRun $run, Account $account, $rows, string $forDate): void
+    private function process(SyncRun $run, Account $account, $rows, string $from, string $to): void
     {
         $imported = 0;
         $dupes = 0;
         $attention = 0;
         $fetched = 0;
+        $postDate = now()->toDateString(); // stage every catch-up recharge under today so it lands on "Charged Today" for review
 
         foreach ($rows as $r) {
-            // Only the target day's recharges (Connect returns recent 100).
-            if ($r['rechargedAt']->toDateString() !== $forDate) {
+            // Keep only recharges inside the catch-up window [from, to].
+            $rd = $r['rechargedAt']->toDateString();
+            if ($rd < $from || $rd > $to) {
                 continue;
             }
             $fetched++;
@@ -184,8 +202,12 @@ class PortalSyncService
                 continue;
             }
 
-            $already = Charge::where('customer_id', $customer->id)->where('source', 'connect_sync')
-                ->whereDate('charge_date', $forDate)->exists();
+            // Dedup on the portal RECHARGE EVENT (customer + exact recharge time),
+            // not the post date — so re-syncing an overlapping window never
+            // re-imports the same top-up.
+            $already = SyncRow::where('matched_customer_id', $customer->id)
+                ->where('recharged_at', $r['rechargedAt'])
+                ->where('status', 'imported')->exists();
             if ($already) {
                 SyncRow::create([
                     'run_id' => $run->id, 'account_id' => $account->id, 'portal_user_name' => $r['portalUser'],
@@ -197,7 +219,7 @@ class PortalSyncService
                 continue;
             }
 
-            DB::transaction(function () use ($run, $account, $customer, $r, $forDate, &$imported) {
+            DB::transaction(function () use ($run, $account, $customer, $r, $postDate, &$imported) {
                 // Pick the package from the portal's reported speed (via speed_maps) so
                 // a 25 Mbps recharge maps to the "25 MB" tier — not the customer's stale
                 // (often legacy) stored package. Fall back to their current package.
@@ -212,7 +234,7 @@ class PortalSyncService
                     'package_id' => $packageId,
                     'amount_charged' => $charged, 'cost_amount' => $r['cost'],
                     'previous_balance' => $customer->outstanding_balance,
-                    'charge_date' => $forDate, 'billing_period_label' => $r['rechargedAt']->format('F Y'),
+                    'charge_date' => $postDate, 'billing_period_label' => $r['rechargedAt']->format('F Y'),
                     'source' => 'connect_sync', 'recorded_by' => 'Portal Sync',
                     'pending' => true, // staged — does NOT touch the balance until confirmed
                 ]);

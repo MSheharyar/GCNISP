@@ -75,9 +75,10 @@ export default function ConnectSync() {
         <div className="flex-1">
           <h2 className="text-base font-semibold text-slate-800">Portal sync — Connect &amp; Fiber Beam</h2>
           <p className="text-[13px] text-slate-500">
-            Every night at 2 AM we log into the Connect and Fiber Beam portals, read the day's recharges for each
-            account, and import them as <b>charges</b> — no manual typing. The portal “Amount” is your <b>cost</b>, so
-            you get margin automatically. Nothing hits a customer's balance automatically: each recharge lands on{' '}
+            Hit <b>Run sync now</b> to log into the Connect and Fiber Beam portals and pull <b>every recharge since your
+            last sync</b> for each account — no manual typing, nothing missed between syncs. The portal “Amount” is your{' '}
+            <b>cost</b>, so you get margin automatically. Nothing hits a customer's balance automatically: each recharge
+            lands on{' '}
             <Link to="/charged-today" className="font-medium text-brand-600 hover:underline">Charged Today</Link> as a
             draft for you to review (package, amount, opening balance) and add to the record.
           </p>
@@ -164,10 +165,11 @@ export default function ConnectSync() {
         </div>
 
         <div className="scrollbar-thin overflow-x-auto">
-          <table className="w-full min-w-[900px] text-left text-sm">
+          <table className="w-full min-w-[1000px] text-left text-sm">
             <thead>
               <tr className="border-b border-slate-100 text-[12px] uppercase tracking-wide text-slate-400">
                 <th className="px-5 py-2.5 font-medium">Portal user</th>
+                <th className="px-4 py-2.5 font-medium">Portal</th>
                 <th className="px-4 py-2.5 font-medium">Matched customer</th>
                 <th className="px-4 py-2.5 font-medium">Speed → Package</th>
                 <th className="px-4 py-2.5 text-right font-medium">Cost</th>
@@ -202,6 +204,21 @@ function SyncRowLine({ row }: { row: SyncRow }) {
   return (
     <tr className={cn('hover:bg-slate-50', attention && 'bg-amber-50/30')}>
       <td className="px-5 py-3 font-mono text-[12.5px] text-slate-600">{row.portalUserName}</td>
+      <td className="px-4 py-3">
+        {row.portal ? (
+          <span
+            className={cn(
+              'inline-flex items-center rounded-md px-2 py-0.5 text-[11.5px] font-medium',
+              row.source === 'fiberbeam' ? 'bg-violet-50 text-violet-700' : 'bg-sky-50 text-sky-700'
+            )}
+            title={row.account ?? undefined}
+          >
+            {row.portal}
+          </span>
+        ) : (
+          <span className="text-[12px] text-slate-300">—</span>
+        )}
+      </td>
       <td className="px-4 py-3">
         {custId ? (
           <Link to={`/customers/${custId}`} className="text-[13px] font-medium text-slate-800 hover:text-brand-700">

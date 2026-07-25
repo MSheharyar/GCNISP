@@ -18,16 +18,34 @@ class SyncController extends Controller
         $runs = SyncRun::whereIn('id', $latestIds)->orderBy('account_id')->get();
         $rows = SyncRow::with('customer:id,name')->whereIn('run_id', $runs->pluck('id'))->orderByDesc('recharged_at')->get();
 
+        // Which portal each row came from — the run's source + the account label.
+        $sourceByRun = $runs->pluck('source', 'id');
+        $accountName = Account::whereIn('id', $runs->pluck('account_id'))->pluck('name', 'id');
+
         return [
             'runs' => $runs->map(fn ($r) => $this->runPayload($r)),
-            'rows' => $rows->map(fn ($r) => $this->rowPayload($r)),
+            'rows' => $rows->map(fn ($r) => array_merge($this->rowPayload($r), [
+                'source' => $sourceByRun[$r->run_id] ?? null,
+                'portal' => $this->portalLabel($sourceByRun[$r->run_id] ?? null),
+                'account' => $accountName[$r->account_id] ?? null,
+            ])),
         ];
     }
 
-    // Trigger a sync now for today (all accounts).
+    // Friendly portal name for the rows table.
+    private function portalLabel(?string $source): ?string
+    {
+        return match ($source) {
+            'connect' => 'Connect',
+            'fiberbeam' => 'Fiber ISP',
+            default => null,
+        };
+    }
+
+    // Trigger a sync now — pulls every recharge since the last sync (all accounts).
     public function run(Request $request, PortalSyncService $sync)
     {
-        $date = $request->input('date'); // optional YYYY-MM-DD
+        $date = $request->input('date'); // optional YYYY-MM-DD to pin a single day
 
         // Account is tenant-scoped, so this only runs the current dealer's accounts.
         // runAccount() no-ops on accounts without portal credentials.

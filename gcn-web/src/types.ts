@@ -262,6 +262,9 @@ export interface SyncRow {
   paymentSettled: boolean; // true only for prepaid customers
   rechargedAt: string;
   status: SyncRowStatus;
+  source?: 'connect' | 'fiberbeam' | null; // which portal
+  portal?: string | null; // friendly label: "Connect" | "Fiber ISP"
+  account?: string | null; // the account label, e.g. GCNDIGITAL
 }
 
 // A nightly run of the Connect connector, one per Connect account.
