@@ -13,6 +13,8 @@ import type {
   Package,
   PackagePayload,
   Provider,
+  Quotation,
+  QuotationPayload,
   SpeedMap,
   StaffUser,
   Invoice,
@@ -209,6 +211,18 @@ async function req<T>(path: string, options: RequestInit = {}): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+// Fetch a PDF as a blob (Bearer auth — a plain <a> can't send the header) and
+// open it in a new tab.
+async function openPdf(path: string): Promise<void> {
+  const res = await fetch(`${BASE}${path}`, {
+    headers: { ...(auth.token ? { Authorization: `Bearer ${auth.token}` } : {}) },
+  });
+  if (!res.ok) throw new Error(`Failed to load PDF (${res.status})`);
+  const url = URL.createObjectURL(await res.blob());
+  window.open(url, '_blank');
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
 // ── Reference cache (for synchronous lookups) ───────────────────────────
 const refCache: { accounts: Account[]; providers: Provider[]; packages: Package[] } = {
   accounts: [],
@@ -389,16 +403,12 @@ export const api = {
   generateInvoice: (payload: { customerId: number; periodLabel: string }) =>
     req<Invoice>('/invoices', { method: 'POST', body: JSON.stringify(payload) }),
   // Fetch the PDF as a blob (Bearer auth) and open it in a new tab.
-  openInvoicePdf: async (id: number) => {
-    const res = await fetch(`${BASE}/invoices/${id}/pdf`, {
-      headers: { ...(auth.token ? { Authorization: `Bearer ${auth.token}` } : {}) },
-    });
-    if (!res.ok) throw new Error(`Failed to load PDF (${res.status})`);
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    window.open(url, '_blank');
-    setTimeout(() => URL.revokeObjectURL(url), 60_000);
-  },
+  openInvoicePdf: (id: number) => openPdf(`/invoices/${id}/pdf`),
+
+  quotations: () => req<Quotation[]>('/quotations'),
+  generateQuotation: (payload: QuotationPayload) =>
+    req<Quotation>('/quotations', { method: 'POST', body: JSON.stringify(payload) }),
+  openQuotationPdf: (id: number) => openPdf(`/quotations/${id}/pdf`),
   cashbook: () =>
     req<{
       perMonth: { month: string; netIncome: number; cableIncome: number; connectCost: number; spend: number; profit: number }[];

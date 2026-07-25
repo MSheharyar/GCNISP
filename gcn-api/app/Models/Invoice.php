@@ -10,7 +10,7 @@ class Invoice extends Model
     use BelongsToDealer;
     protected $guarded = [];
 
-    protected $casts = ['line_items' => 'array', 'issue_date' => 'date'];
+    protected $casts = ['line_items' => 'array', 'issue_date' => 'date', 'valid_until' => 'date'];
 
     public function customer()
     {

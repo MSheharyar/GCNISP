@@ -14,6 +14,7 @@ import Cable from './pages/Cable';
 import CableDetail from './pages/CableDetail';
 import CashBook from './pages/CashBook';
 import Invoices from './pages/Invoices';
+import Quotations from './pages/Quotations';
 import Reports from './pages/Reports';
 import Staff from './pages/Staff';
 import Settings from './pages/Settings';
@@ -47,6 +48,7 @@ export default function App() {
           <Route path="/cable/:id" element={<CableDetail />} />
           <Route path="/cashbook" element={<CashBook />} />
           <Route path="/invoices" element={<Invoices />} />
+          <Route path="/quotations" element={<Quotations />} />
           <Route path="/reports" element={<Reports />} />
             <Route path="/staff" element={<Staff />} />
             <Route path="/settings" element={<Settings />} />

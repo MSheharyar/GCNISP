@@ -14,7 +14,7 @@ class InvoiceController extends Controller
 {
     public function index()
     {
-        return Invoice::orderByDesc('id')->get()->map(fn ($i) => $this->payload($i));
+        return Invoice::where('type', 'invoice')->orderByDesc('id')->get()->map(fn ($i) => $this->payload($i));
     }
 
     public function generate(Request $request)
@@ -45,9 +45,10 @@ class InvoiceController extends Controller
 
         $total = collect($lineItems)->sum(fn ($li) => $li['qty'] * $li['unitPrice']);
         $year = now()->year;
-        $seq = Invoice::whereYear('created_at', $year)->count() + 1;
+        $seq = Invoice::where('type', 'invoice')->whereYear('created_at', $year)->count() + 1;
 
         $invoice = Invoice::create([
+            'type' => 'invoice',
             'customer_id' => $customer->id,
             'invoice_no' => sprintf('GCN-%d-%04d', $year, $seq),
             'issue_date' => now()->toDateString(),

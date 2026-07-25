@@ -118,6 +118,39 @@ export interface Invoice {
   createdAt: string;
 }
 
+export interface QuotationLineItem {
+  description: string;
+  qty: number;
+  unit?: string | null; // e.g. "m" for wire per metre
+  unitPrice: number;
+}
+
+export interface Quotation {
+  id: number;
+  type: 'quotation';
+  customerId: number | null;
+  recipientName: string | null;
+  recipientPhone: string | null;
+  recipientAddress: string | null;
+  quotationNo: string;
+  issueDate: string;
+  validUntil: string | null;
+  notes: string | null;
+  lineItems: QuotationLineItem[];
+  totalAmount: number;
+  generatedBy: string;
+}
+
+export interface QuotationPayload {
+  customerId?: number | null;
+  recipientName?: string | null;
+  recipientPhone?: string | null;
+  recipientAddress?: string | null;
+  validUntil?: string | null;
+  notes?: string | null;
+  lineItems: QuotationLineItem[];
+}
+
 export interface StaffUser {
   id: number;
   name: string;

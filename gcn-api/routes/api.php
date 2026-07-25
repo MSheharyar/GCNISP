@@ -10,6 +10,7 @@ use App\Http\Controllers\FinanceController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\MonthlyController;
 use App\Http\Controllers\PackageController;
+use App\Http\Controllers\QuotationController;
 use App\Http\Controllers\ReferenceController;
 use App\Http\Controllers\StaffController;
 use App\Http\Controllers\SyncController;
@@ -56,6 +57,8 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
     Route::middleware('role:admin,operator')->group(function () {
         Route::get('/invoices', [InvoiceController::class, 'index']);
         Route::get('/invoices/{invoice}/pdf', [InvoiceController::class, 'pdf']);
+        Route::get('/quotations', [QuotationController::class, 'index']);
+        Route::get('/quotations/{quotation}/pdf', [QuotationController::class, 'pdf']);
         Route::get('/expenses', [FinanceController::class, 'expenses']);
         Route::get('/cashbook', [FinanceController::class, 'cashbook']);
         Route::get('/cable-customers', [CableController::class, 'index']);
@@ -77,6 +80,7 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
 
         Route::post('/expenses', [FinanceController::class, 'storeExpense']);
         Route::post('/invoices', [InvoiceController::class, 'generate']);
+        Route::post('/quotations', [QuotationController::class, 'generate']);
         Route::post('/connect-sync/run', [SyncController::class, 'run']);
         Route::post('/portal-stats/refresh', [SyncController::class, 'refreshStats']);
     });

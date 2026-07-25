@@ -5,6 +5,7 @@ import {
   Zap,
   HandCoins,
   FileText,
+  FileSignature,
   BarChart3,
   UserCog,
   Settings,
@@ -39,6 +40,7 @@ const SECTIONS: { title?: string; items: { to: string; label: string; icon: type
       { to: '/connect-sync', label: 'Connect Sync', icon: RefreshCw },
       { to: '/recovery', label: 'Recovery List', icon: HandCoins },
       { to: '/invoices', label: 'Commercial Invoices', icon: FileText },
+      { to: '/quotations', label: 'Quotations', icon: FileSignature },
     ],
   },
   {
