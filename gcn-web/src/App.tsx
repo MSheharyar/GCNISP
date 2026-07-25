@@ -19,6 +19,7 @@ import Reports from './pages/Reports';
 import Staff from './pages/Staff';
 import Settings from './pages/Settings';
 import DealerConsole from './pages/DealerConsole';
+import Landing from './pages/Landing';
 import Login from './pages/Login';
 
 export default function App() {
@@ -26,6 +27,8 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <Routes>
+          {/* Public marketing landing (shown before login) */}
+          <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
           <Route
             element={
@@ -34,7 +37,7 @@ export default function App() {
               </RequireAuth>
             }
           >
-          <Route path="/" element={<Dashboard />} />
+          <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/charged-today" element={<ChargedToday />} />
           <Route path="/monthly" element={<MonthlyRegister />} />
           <Route path="/log" element={<LogCharge />} />
@@ -54,7 +57,7 @@ export default function App() {
             <Route path="/settings" element={<Settings />} />
             <Route path="/console" element={<DealerConsole />} />
           </Route>
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Plus, Building2, UserRound, Copy, Check, Loader2, Power, PowerOff, Palette } from 'lucide-react';
-import { api, type Dealer, type DealerCreatePayload } from '../services/api';
+import { Plus, Building2, UserRound, Copy, Check, Loader2, Power, PowerOff, Palette, Inbox, Phone } from 'lucide-react';
+import { api, type Dealer, type DealerCreatePayload, type Lead } from '../services/api';
 import { Card, CardHeader, Button, Modal, cn } from '../components/ui/primitives';
 
 const inputCls =
@@ -142,6 +142,8 @@ export default function DealerConsole() {
           load();
         }}
       />
+
+      <LeadsCard />
 
       <CredentialsModal dealer={created} onClose={() => setCreated(null)} />
 
@@ -292,6 +294,91 @@ function Row({ icon, label, value }: { icon: React.ReactNode; label: string; val
       <span className="w-24 text-[12px] text-slate-400">{label}</span>
       <span className="font-mono text-[13px] text-slate-700">{value}</span>
     </div>
+  );
+}
+
+const LEAD_STATUS: Record<Lead['status'], string> = {
+  new: 'bg-blue-50 text-blue-700',
+  contacted: 'bg-amber-50 text-amber-700',
+  converted: 'bg-emerald-50 text-emerald-700',
+  dropped: 'bg-slate-100 text-slate-500',
+};
+
+const NEXT_STATUS: Lead['status'][] = ['new', 'contacted', 'converted', 'dropped'];
+
+function LeadsCard() {
+  const [leads, setLeads] = useState<Lead[] | null>(null);
+  const [busyId, setBusyId] = useState<number | null>(null);
+
+  useEffect(() => {
+    api.leads().then(setLeads).catch(() => setLeads([]));
+  }, []);
+
+  const cycle = async (l: Lead) => {
+    const next = NEXT_STATUS[(NEXT_STATUS.indexOf(l.status) + 1) % NEXT_STATUS.length];
+    setBusyId(l.id);
+    try {
+      const updated = await api.updateLead(l.id, next);
+      setLeads((prev) => prev!.map((x) => (x.id === l.id ? updated : x)));
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  if (!leads) return null;
+
+  return (
+    <Card className="overflow-hidden">
+      <CardHeader title="Access requests" subtitle="Leads from the landing page's Request-access form. Click the status to advance it." />
+      {leads.length === 0 ? (
+        <div className="flex flex-col items-center gap-2 px-5 py-10 text-center text-sm text-slate-400">
+          <Inbox size={22} /> No requests yet.
+        </div>
+      ) : (
+        <table className="w-full text-left text-sm">
+          <thead>
+            <tr className="border-b border-slate-100 text-[12px] uppercase tracking-wide text-slate-400">
+              <th className="px-5 py-2.5 font-medium">Contact</th>
+              <th className="px-4 py-2.5 font-medium">Business</th>
+              <th className="px-4 py-2.5 font-medium">Details</th>
+              <th className="px-5 py-2.5 text-right font-medium">Status</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-50">
+            {leads.map((l) => (
+              <tr key={l.id} className="hover:bg-slate-50">
+                <td className="px-5 py-3">
+                  <div className="font-semibold text-slate-800">{l.name}</div>
+                  <a href={`tel:${l.phone}`} className="inline-flex items-center gap-1 text-[12.5px] text-brand-600">
+                    <Phone size={12} /> {l.phone}
+                  </a>
+                </td>
+                <td className="px-4 py-3 text-[13px] text-slate-600">
+                  {l.businessName || '—'}
+                  {l.city && <div className="text-[11.5px] text-slate-400">{l.city}</div>}
+                </td>
+                <td className="px-4 py-3 text-[12.5px] text-slate-500">
+                  {l.subscribers && <div>{l.subscribers} subscribers</div>}
+                  {l.portals && <div>Portals: {l.portals}</div>}
+                  {l.message && <div className="max-w-[240px] truncate text-slate-400" title={l.message}>“{l.message}”</div>}
+                </td>
+                <td className="px-5 py-3 text-right">
+                  <button
+                    onClick={() => cycle(l)}
+                    disabled={busyId === l.id}
+                    className={cn('inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium capitalize', LEAD_STATUS[l.status])}
+                    title="Click to advance status"
+                  >
+                    {busyId === l.id ? <Loader2 size={12} className="animate-spin" /> : null}
+                    {l.status}
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </Card>
   );
 }
 

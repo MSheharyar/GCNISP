@@ -272,6 +272,29 @@ export interface Branding {
   logoUrl: string | null;
 }
 
+export interface LeadPayload {
+  name: string;
+  businessName?: string;
+  phone: string;
+  city?: string;
+  subscribers?: string;
+  portals?: string;
+  message?: string;
+}
+
+export interface Lead {
+  id: number;
+  name: string;
+  businessName: string | null;
+  phone: string;
+  city: string | null;
+  subscribers: string | null;
+  portals: string | null;
+  message: string | null;
+  status: 'new' | 'contacted' | 'converted' | 'dropped';
+  createdAt: string | null;
+}
+
 export interface DealerCreatePayload {
   name: string;
   slug?: string;
@@ -339,6 +362,12 @@ export const api = {
     payload: Partial<{ name: string; status: string; contactName: string; contactPhone: string; slug: string; primaryColor: string | null; logoUrl: string | null }>
   ) => req<Dealer>(`/admin/dealers/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
   branding: () => req<Branding>('/branding'),
+  leads: () => req<Lead[]>('/admin/leads'),
+  updateLead: (id: number, status: Lead['status']) =>
+    req<Lead>(`/admin/leads/${id}`, { method: 'PUT', body: JSON.stringify({ status }) }),
+  // Public — landing page "Request access" form (no auth).
+  submitLead: (payload: LeadPayload) =>
+    req<{ ok: boolean }>('/public/leads', { method: 'POST', body: JSON.stringify(payload) }),
 
   customers: () => req<Customer[]>('/customers'),
   customer: (id: number) => req<Customer>(`/customers/${id}`),

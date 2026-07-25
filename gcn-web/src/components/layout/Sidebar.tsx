@@ -22,12 +22,12 @@ import { cn } from '../ui/primitives';
 import { useAuth } from '../../services/auth';
 
 // Restricted (viewer) staff only see these operational pages.
-const VIEWER_PATHS = new Set(['/', '/charged-today', '/monthly', '/recovery']);
+const VIEWER_PATHS = new Set(['/dashboard', '/charged-today', '/monthly', '/recovery']);
 
 const SECTIONS: { title?: string; items: { to: string; label: string; icon: typeof LayoutDashboard; end?: boolean; highlight?: boolean }[] }[] = [
   {
     items: [
-      { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
+      { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, end: true },
       { to: '/log', label: 'Log Charge + Payment', icon: Zap, highlight: true },
       { to: '/charged-today', label: 'Charged Today', icon: Clock },
     ],

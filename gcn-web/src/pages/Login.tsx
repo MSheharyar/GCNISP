@@ -21,7 +21,7 @@ export default function Login() {
     setBusy(true);
     try {
       await login(email, password);
-      navigate('/');
+      navigate('/dashboard');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
