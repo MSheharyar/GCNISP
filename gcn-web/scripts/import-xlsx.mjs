@@ -299,10 +299,15 @@ for (const { fullPath, period, ym } of FILES) {
         }
         const paidDate = clampToMonth(toISO(row[iADate], ym), ym);
         if (amount != null && amount > 0) {
+          // A charge can't be dated after it was paid. The sheets sometimes carry a
+          // customer's *typical* billing day (e.g. the 27th) that lands ahead of the
+          // real recharge — cap it to the payment date so no charge is ever future-
+          // dated, matching the actual portal recharge day.
+          const effChargeDate = paidDate && paidDate < chargeDate ? paidDate : chargeDate;
           // One record per (customer, service-month); a later file overwrites an
           // earlier one, collapsing carry-forward duplicates. The payment (if the
           // A. Date is set) rides along on the same record.
-          const chargeMonth = chargeDate.slice(0, 7);
+          const chargeMonth = effChargeDate.slice(0, 7);
           const payMonth = paidDate ? paidDate.slice(0, 7) : null;
           chargeMap.set(`${cust.id}:${chargeMonth}`, {
             customerId: cust.id,
@@ -310,7 +315,7 @@ for (const { fullPath, period, ym } of FILES) {
             packageName: pkg,
             amountCharged: amount,
             costAmount: isConnect(account.id) ? Math.round((amount * 0.48) / 10) * 10 : null,
-            chargeDate,
+            chargeDate: effChargeDate,
             paidDate: paidDate || null,
             method: isJazz ? 'jazz' : 'cash',
             isArrears: payMonth ? payMonth > chargeMonth : false,
