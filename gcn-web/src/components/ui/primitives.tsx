@@ -1,4 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import type { PackageColor, CustomerStatus, PaymentMethod } from '../../types';
 
 // ── cn helper ───────────────────────────────────────────────────────────
@@ -189,10 +190,13 @@ export function Modal({
   children: ReactNode;
 }) {
   if (!open) return null;
-  return (
+  // Portal to <body> so the fixed overlay is relative to the viewport — not to a
+  // transformed/`backdrop-filter` ancestor (e.g. the top bar), which would trap
+  // and clip it.
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-md rounded-2xl bg-white shadow-xl">
+      <div className="relative flex max-h-[90vh] w-full max-w-md flex-col rounded-2xl bg-white shadow-xl">
         <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
           <h3 className="text-[15px] font-semibold text-slate-800">{title}</h3>
           <button onClick={onClose} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100">
@@ -201,9 +205,10 @@ export function Modal({
             </svg>
           </button>
         </div>
-        <div className="px-5 py-4">{children}</div>
+        <div className="overflow-y-auto px-5 py-4">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
