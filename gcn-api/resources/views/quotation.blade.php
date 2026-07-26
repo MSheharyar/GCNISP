@@ -47,11 +47,21 @@
 </style>
 </head>
 <body>
+@php
+  $logoPath = public_path('images/gcn-logo.png');
+  $logoSrc = is_file($logoPath) ? 'data:image/png;base64,'.base64_encode(file_get_contents($logoPath)) : null;
+@endphp
 <div class="wrap">
 
   <table class="head">
     <tr>
-      <td style="width: 48px;"><div class="brand-mark">G</div></td>
+      <td style="width: 48px;">
+        @if($logoSrc)
+          <img src="{{ $logoSrc }}" style="width: 38px; height: 38px; border-radius: 19px;" alt="">
+        @else
+          <div class="brand-mark">G</div>
+        @endif
+      </td>
       <td>
         <div class="brand-name">GLOBAL</div>
         <div class="brand-sub">CABLE NETWORK</div>
