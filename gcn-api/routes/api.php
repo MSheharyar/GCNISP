@@ -78,6 +78,8 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
         Route::post('/customers/{customer}/log', [CustomerController::class, 'logChargePayment']);
         Route::post('/charges/{charge}/pay', [ChargeController::class, 'markPaid']);
         Route::post('/charges/{charge}/commit', [ChargeController::class, 'commit']);
+        Route::put('/charges/{charge}', [ChargeController::class, 'update']);
+        Route::delete('/charges/{charge}', [ChargeController::class, 'destroy']);
         Route::post('/customers/{customer}/switch-account', [CustomerController::class, 'switchAccount']);
 
         Route::post('/cable-customers', [CableController::class, 'store']);

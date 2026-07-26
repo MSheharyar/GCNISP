@@ -109,7 +109,9 @@ export interface MonthlyRow {
   houseNo: string;
   sector: string;
   account: string;
+  accountId: number | null;
   package: string | null;
+  packageId: number | null;
   speedMbps: number | null;
   chargeDate: string;
   amount: number;
@@ -117,6 +119,17 @@ export interface MonthlyRow {
   paidDate: string | null;
   method: string | null;
   balance: number;
+}
+
+export interface ChargeEditPayload {
+  chargeDate: string;
+  amount: number;
+  accountId: number | null;
+  packageId: number | null;
+  paid: boolean;
+  receivedAmount?: number | null;
+  receivedDate?: string | null;
+  method?: string | null;
 }
 
 export interface MonthlyData {
@@ -395,6 +408,9 @@ export const api = {
 
   chargedToday: () => req<ChargedTodayRow[]>('/charged-today'),
   monthly: (month?: string) => req<MonthlyData>(`/monthly${month ? `?month=${month}` : ''}`),
+  updateCharge: (chargeId: number, payload: ChargeEditPayload) =>
+    req<{ ok: boolean }>(`/charges/${chargeId}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  deleteCharge: (chargeId: number) => req<{ deleted: boolean }>(`/charges/${chargeId}`, { method: 'DELETE' }),
   markChargePaid: (chargeId: number, paid: boolean, method?: string) =>
     req<{ chargeId: number; paid: boolean; paidMethod: string | null }>(`/charges/${chargeId}/pay`, {
       method: 'POST',

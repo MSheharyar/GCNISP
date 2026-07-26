@@ -6,8 +6,11 @@ use App\Models\AuditLog;
 use App\Models\Charge;
 use App\Models\Customer;
 use App\Models\Payment;
+use App\Support\Tenant;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class ChargeController extends Controller
 {
@@ -159,6 +162,88 @@ class ChargeController extends Controller
                 'paidMethod' => $data['paid'] ? ($data['method'] ?? 'cash') : null,
             ]);
         });
+    }
+
+    // ── Monthly Register edit ───────────────────────────────────────────────
+    // Correct a register row: the charge (date / amount / account / package) and
+    // its payment (paid, amount, date, method). Balance is recomputed from the
+    // full ledger afterwards so it can never drift.
+    public function update(Request $request, Charge $charge)
+    {
+        $data = $request->validate([
+            'chargeDate' => ['required', 'date'],
+            'amount' => ['required', 'integer', 'min:0'],
+            'accountId' => ['nullable', 'integer', Rule::exists('accounts', 'id')->where('dealer_id', Tenant::id())],
+            'packageId' => ['nullable', 'integer', Rule::exists('packages', 'id')->where('dealer_id', Tenant::id())],
+            'paid' => ['required', 'boolean'],
+            'receivedAmount' => ['nullable', 'integer', 'min:0'],
+            'receivedDate' => ['nullable', 'date'],
+            'method' => ['nullable', 'in:cash,jazz,bank,other'],
+        ]);
+
+        return DB::transaction(function () use ($data, $charge, $request) {
+            $customer = Customer::findOrFail($charge->customer_id);
+
+            $charge->update([
+                'charge_date' => $data['chargeDate'],
+                'amount_charged' => $data['amount'],
+                'account_id' => $data['accountId'] ?? $charge->account_id,
+                'package_id' => array_key_exists('packageId', $data) ? $data['packageId'] : $charge->package_id,
+                'billing_period_label' => Carbon::parse($data['chargeDate'])->format('F Y'),
+                'pending' => false, // an edited row is a confirmed record
+            ]);
+
+            $existing = Payment::where('charge_id', $charge->id)->get();
+            if ($data['paid']) {
+                $attrs = [
+                    'amount_received' => $data['receivedAmount'] ?? $data['amount'],
+                    'received_date' => $data['receivedDate'] ?? $data['chargeDate'],
+                    'method' => $data['method'] ?? 'cash',
+                ];
+                if ($existing->isNotEmpty()) {
+                    $existing->first()->update($attrs);
+                    $existing->slice(1)->each->delete(); // collapse any duplicates
+                } else {
+                    Payment::create(array_merge($attrs, [
+                        'customer_id' => $customer->id, 'charge_id' => $charge->id,
+                        'is_arrears' => false, 'recorded_by' => $request->user()->name,
+                    ]));
+                }
+            } else {
+                $existing->each->delete();
+            }
+
+            $this->recomputeBalance($customer);
+            AuditLog::record($request, 'edit_charge', 'charge', $charge->id, ['amount' => $data['amount'], 'paid' => $data['paid']]);
+
+            return response()->json(['ok' => true]);
+        });
+    }
+
+    // Delete a register row (charge + its payments). Soft-deleted, so recoverable.
+    public function destroy(Request $request, Charge $charge)
+    {
+        return DB::transaction(function () use ($charge, $request) {
+            $customer = Customer::findOrFail($charge->customer_id);
+            Payment::where('charge_id', $charge->id)->get()->each->delete();
+            $charge->delete();
+            $this->recomputeBalance($customer);
+            AuditLog::record($request, 'delete_charge', 'charge', $charge->id, ['amount' => $charge->amount_charged]);
+
+            return response()->json(['deleted' => true]);
+        });
+    }
+
+    // Outstanding = Σ charges − Σ payments across the customer's whole ledger
+    // (the seeded opening-balance entry is a charge, so this ties out exactly).
+    private function recomputeBalance(Customer $c): void
+    {
+        $charges = (int) Charge::where('customer_id', $c->id)->sum('amount_charged');
+        $pays = (int) Payment::where('customer_id', $c->id)->sum('amount_received');
+        $c->outstanding_balance = $charges - $pays;
+        $fee = optional($c->loadMissing('package')->package)->price ?? $c->loadMissing('subscription')->subscription?->frozen_amount ?? 0;
+        $c->months_overdue = ($fee > 0 && $c->outstanding_balance > 0) ? (int) round($c->outstanding_balance / $fee) : 0;
+        $c->save();
     }
 
     private function syncArrears(Customer $c): void

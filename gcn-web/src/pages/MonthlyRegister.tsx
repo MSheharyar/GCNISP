@@ -1,20 +1,40 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CalendarDays, Search, Check } from 'lucide-react';
-import { api } from '../services/api';
+import { CalendarDays, Search, Check, Pencil, Trash2, Loader2 } from 'lucide-react';
+import { api, type MonthlyRow } from '../services/api';
 import { useApi } from '../lib/useApi';
+import { useAuth } from '../services/auth';
 import { formatPKR, formatDate } from '../lib/format';
-import { Card, Pagination, PackageTag, LoadError, cn } from '../components/ui/primitives';
+import { Card, Pagination, PackageTag, LoadError, Modal, Button, cn } from '../components/ui/primitives';
 
 const METHOD_LABEL: Record<string, string> = { cash: 'Cash', jazz: 'JazzCash', bank: 'Bank', other: 'Other' };
 const PAGE_SIZE = 15;
 
 export default function MonthlyRegister() {
+  const { user } = useAuth();
+  const canEdit = user?.role !== 'viewer';
   const [month, setMonth] = useState<string | undefined>(undefined);
-  const { data, loading, error } = useApi(() => api.monthly(month), [month]);
+  const [reload, setReload] = useState(0);
+  const { data, loading, error } = useApi(() => api.monthly(month), [month, reload]);
+  const { data: accountsRef } = useApi(() => api.accounts(), []);
+  const { data: packagesRef } = useApi(() => api.packages(), []);
   const [q, setQ] = useState('');
   const [account, setAccount] = useState('all');
   const [page, setPage] = useState(1);
+  const [editing, setEditing] = useState<MonthlyRow | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  const refresh = () => setReload((r) => r + 1);
+  const del = async (row: MonthlyRow) => {
+    if (!confirm(`Delete this ${formatDate(row.chargeDate)} charge for ${row.name}? It can be restored from the audit log.`)) return;
+    setDeletingId(row.chargeId);
+    try {
+      await api.deleteCharge(row.chargeId);
+      refresh();
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const accounts = useMemo(() => Array.from(new Set((data?.rows ?? []).map((r) => r.account))), [data]);
 
@@ -124,7 +144,7 @@ export default function MonthlyRegister() {
         </div>
 
         <div className="scrollbar-thin overflow-x-auto">
-          <table className="w-full min-w-[980px] text-left text-sm">
+          <table className="w-full min-w-[1060px] text-left text-sm">
             <thead>
               <tr className="border-b border-slate-100 text-[12px] uppercase tracking-wide text-slate-400">
                 <th className="px-5 py-2.5 font-medium">Customer</th>
@@ -135,6 +155,7 @@ export default function MonthlyRegister() {
                 <th className="px-4 py-2.5 text-right font-medium">Amount</th>
                 <th className="px-4 py-2.5 font-medium">Payment</th>
                 <th className="px-5 py-2.5 text-right font-medium">Balance</th>
+                {canEdit && <th className="px-4 py-2.5 text-right font-medium"></th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
@@ -173,6 +194,18 @@ export default function MonthlyRegister() {
                   <td className={cn('px-5 py-3 text-right text-[13px] font-semibold tabular-nums', r.balance > 0 ? 'text-red-600' : 'text-slate-400')}>
                     {formatPKR(r.balance)}
                   </td>
+                  {canEdit && (
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-end gap-1">
+                        <button onClick={() => setEditing(r)} title="Edit" className="rounded-md p-1.5 text-slate-400 hover:bg-brand-50 hover:text-brand-600">
+                          <Pencil size={15} />
+                        </button>
+                        <button onClick={() => del(r)} disabled={deletingId === r.chargeId} title="Delete" className="rounded-md p-1.5 text-slate-300 hover:bg-rose-50 hover:text-rose-500">
+                          {deletingId === r.chargeId ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
+                        </button>
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -186,6 +219,142 @@ export default function MonthlyRegister() {
           <Pagination page={page} pages={pages} total={filtered.length} pageSize={PAGE_SIZE} onChange={setPage} />
         )}
       </Card>
+
+      {editing && (
+        <EditRowModal
+          row={editing}
+          accounts={(accountsRef ?? []).map((a) => ({ id: a.id, name: a.name }))}
+          packages={(packagesRef ?? []).filter((p) => p.isActive).map((p) => ({ id: p.id, name: p.name, speedMbps: p.speedMbps }))}
+          onClose={() => setEditing(null)}
+          onSaved={() => {
+            setEditing(null);
+            refresh();
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function EditRowModal({
+  row,
+  accounts,
+  packages,
+  onClose,
+  onSaved,
+}: {
+  row: MonthlyRow;
+  accounts: { id: number; name: string }[];
+  packages: { id: number; name: string; speedMbps: number | null }[];
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [chargeDate, setChargeDate] = useState(row.chargeDate);
+  const [accountId, setAccountId] = useState<number | ''>(row.accountId ?? '');
+  const [packageId, setPackageId] = useState<number | ''>(row.packageId ?? '');
+  const [amount, setAmount] = useState(String(row.amount));
+  const [paid, setPaid] = useState(row.paid);
+  const [receivedAmount, setReceivedAmount] = useState(String(row.paid ? row.amount : row.amount));
+  const [receivedDate, setReceivedDate] = useState(row.paidDate ?? row.chargeDate);
+  const [method, setMethod] = useState(row.method ?? 'cash');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const input = 'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100';
+
+  const save = async () => {
+    setSaving(true);
+    setError('');
+    try {
+      await api.updateCharge(row.chargeId, {
+        chargeDate,
+        amount: Number(amount) || 0,
+        accountId: accountId === '' ? null : Number(accountId),
+        packageId: packageId === '' ? null : Number(packageId),
+        paid,
+        receivedAmount: paid ? Number(receivedAmount) || 0 : null,
+        receivedDate: paid ? receivedDate : null,
+        method: paid ? method : null,
+      });
+      onSaved();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not save.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal open onClose={onClose} title={`Edit — ${row.name} (${row.loginId})`}>
+      <div className="space-y-3">
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Charge date">
+            <input type="date" className={input} value={chargeDate} onChange={(e) => setChargeDate(e.target.value)} />
+          </Field>
+          <Field label="Amount (Rs)">
+            <input inputMode="numeric" className={input} value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^0-9]/g, ''))} />
+          </Field>
+          <Field label="Account (portal)">
+            <select className={input} value={accountId} onChange={(e) => setAccountId(e.target.value === '' ? '' : Number(e.target.value))}>
+              <option value="">—</option>
+              {accounts.map((a) => (
+                <option key={a.id} value={a.id}>{a.name}</option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Package / speed">
+            <select className={input} value={packageId} onChange={(e) => setPackageId(e.target.value === '' ? '' : Number(e.target.value))}>
+              <option value="">— none —</option>
+              {packages.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}{p.speedMbps && !/mb/i.test(p.name) ? ` · ${p.speedMbps} MB` : ''}</option>
+              ))}
+            </select>
+          </Field>
+        </div>
+
+        <div className="rounded-lg border border-slate-200 p-3">
+          <label className="flex items-center gap-2 text-[13.5px] font-medium text-slate-700">
+            <input type="checkbox" checked={paid} onChange={(e) => setPaid(e.target.checked)} className="h-4 w-4 rounded border-slate-300" />
+            Payment received
+          </label>
+          {paid && (
+            <div className="mt-3 grid grid-cols-3 gap-2.5">
+              <Field label="Received (Rs)">
+                <input inputMode="numeric" className={input} value={receivedAmount} onChange={(e) => setReceivedAmount(e.target.value.replace(/[^0-9]/g, ''))} />
+              </Field>
+              <Field label="Paid date">
+                <input type="date" className={input} value={receivedDate} onChange={(e) => setReceivedDate(e.target.value)} />
+              </Field>
+              <Field label="Method">
+                <select className={input} value={method} onChange={(e) => setMethod(e.target.value)}>
+                  <option value="cash">Cash</option>
+                  <option value="jazz">JazzCash</option>
+                  <option value="bank">Bank</option>
+                  <option value="other">Other</option>
+                </select>
+              </Field>
+            </div>
+          )}
+        </div>
+
+        {error && <div className="rounded-lg bg-rose-50 px-3 py-2 text-[13px] text-rose-700">{error}</div>}
+
+        <div className="flex justify-end gap-2 pt-1">
+          <Button variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button variant="primary" onClick={save} disabled={saving}>
+            {saving ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />} Save
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="mb-1 block text-[12px] font-medium text-slate-600">{label}</label>
+      {children}
     </div>
   );
 }
