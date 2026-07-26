@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
-import { FileText, Printer, Plus, Download, Search } from 'lucide-react';
+import { FileText, Printer, Plus, Download, Search, Trash2, Loader2 } from 'lucide-react';
 import { api } from '../services/api';
 import { useApi } from '../lib/useApi';
-import { formatPKR, formatDate } from '../lib/format';
+import { formatPKR, formatDate, groupByMonth } from '../lib/format';
 import type { Customer, Invoice, OrgSettings } from '../types';
 import { Card, Button, Modal, cn } from '../components/ui/primitives';
 import Logo from '../components/Logo';
@@ -15,8 +15,23 @@ export default function Invoices() {
   const [selected, setSelected] = useState<Invoice | null>(null);
   const [genOpen, setGenOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const active = selected ?? invoices?.[0] ?? null;
+
+  const groups = useMemo(() => groupByMonth(invoices ?? [], (i) => i.issueDate), [invoices]);
+
+  const del = async (inv: Invoice) => {
+    if (!confirm(`Delete invoice ${inv.invoiceNo}? This can't be undone.`)) return;
+    setDeletingId(inv.id);
+    try {
+      await api.deleteInvoice(inv.id);
+      if (selected?.id === inv.id) setSelected(null);
+      setReload((r) => r + 1);
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const openPdf = async () => {
     if (!active) return;
@@ -50,30 +65,48 @@ export default function Invoices() {
           <div className="border-b border-slate-100 px-4 py-3 text-[13px] font-medium text-slate-600">
             Commercial invoices
           </div>
-          <div className="divide-y divide-slate-50">
+          <div>
             {loading && <div className="px-4 py-8 text-center text-sm text-slate-400">Loading…</div>}
-            {invoices?.map((inv) => {
-              const cust = customers?.find((c) => c.id === inv.customerId);
-              const isActive = active?.id === inv.id;
-              return (
-                <button
-                  key={inv.id}
-                  onClick={() => setSelected(inv)}
-                  className={cn('flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-slate-50', isActive && 'bg-brand-50')}
-                >
-                  <span className={cn('flex h-9 w-9 items-center justify-center rounded-lg', isActive ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-500')}>
-                    <FileText size={16} />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-[13px] font-medium text-slate-800">{cust?.companyName ?? cust?.name}</div>
-                    <div className="text-[12px] text-slate-400">
-                      {inv.invoiceNo} · {inv.periodLabel}
-                    </div>
-                  </div>
-                  <span className="text-[13px] font-semibold text-slate-700">{formatPKR(inv.totalAmount)}</span>
-                </button>
-              );
-            })}
+            {!loading && groups.length === 0 && (
+              <div className="px-4 py-10 text-center text-sm text-slate-400">No invoices yet.</div>
+            )}
+            {groups.map((g) => (
+              <div key={g.key}>
+                <div className="sticky top-0 bg-slate-50/80 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400 backdrop-blur">
+                  {g.label} · {g.items.length}
+                </div>
+                <div className="divide-y divide-slate-50">
+                  {g.items.map((inv) => {
+                    const cust = customers?.find((c) => c.id === inv.customerId);
+                    const isActive = active?.id === inv.id;
+                    return (
+                      <div key={inv.id} className={cn('group flex items-center gap-3 px-4 py-3 hover:bg-slate-50', isActive && 'bg-brand-50')}>
+                        <button onClick={() => setSelected(inv)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+                          <span className={cn('flex h-9 w-9 items-center justify-center rounded-lg', isActive ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-500')}>
+                            <FileText size={16} />
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate text-[13px] font-medium text-slate-800">{cust?.companyName ?? cust?.name}</div>
+                            <div className="text-[12px] text-slate-400">
+                              {inv.invoiceNo} · {inv.periodLabel}
+                            </div>
+                          </div>
+                          <span className="text-[13px] font-semibold text-slate-700">{formatPKR(inv.totalAmount)}</span>
+                        </button>
+                        <button
+                          onClick={() => del(inv)}
+                          disabled={deletingId === inv.id}
+                          title="Delete invoice"
+                          className="shrink-0 rounded-md p-1.5 text-slate-300 hover:bg-rose-50 hover:text-rose-500"
+                        >
+                          {deletingId === inv.id ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
         </Card>
       </div>

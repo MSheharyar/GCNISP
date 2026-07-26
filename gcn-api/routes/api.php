@@ -85,7 +85,9 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
 
         Route::post('/expenses', [FinanceController::class, 'storeExpense']);
         Route::post('/invoices', [InvoiceController::class, 'generate']);
+        Route::delete('/invoices/{invoice}', [InvoiceController::class, 'destroy']);
         Route::post('/quotations', [QuotationController::class, 'generate']);
+        Route::delete('/quotations/{quotation}', [QuotationController::class, 'destroy']);
         Route::post('/connect-sync/run', [SyncController::class, 'run']);
         Route::post('/portal-stats/refresh', [SyncController::class, 'refreshStats']);
     });

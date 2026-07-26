@@ -434,10 +434,13 @@ export const api = {
   // Fetch the PDF as a blob (Bearer auth) and open it in a new tab.
   openInvoicePdf: (id: number) => openPdf(`/invoices/${id}/pdf`),
 
+  deleteInvoice: (id: number) => req<{ deleted: boolean }>(`/invoices/${id}`, { method: 'DELETE' }),
+
   quotations: () => req<Quotation[]>('/quotations'),
   generateQuotation: (payload: QuotationPayload) =>
     req<Quotation>('/quotations', { method: 'POST', body: JSON.stringify(payload) }),
   openQuotationPdf: (id: number) => openPdf(`/quotations/${id}/pdf`),
+  deleteQuotation: (id: number) => req<{ deleted: boolean }>(`/quotations/${id}`, { method: 'DELETE' }),
   cashbook: () =>
     req<{
       perMonth: { month: string; netIncome: number; cableIncome: number; connectCost: number; spend: number; profit: number }[];

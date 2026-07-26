@@ -74,6 +74,17 @@ class QuotationController extends Controller
         return response()->json($this->payload($quotation), 201);
     }
 
+    public function destroy(Request $request, Invoice $quotation)
+    {
+        abort_unless($quotation->type === 'quotation', 404);
+        $no = $quotation->invoice_no;
+        $id = $quotation->id;
+        $quotation->delete();
+        AuditLog::record($request, 'delete', 'quotation', $id, ['no' => $no]);
+
+        return response()->json(['deleted' => true]);
+    }
+
     public function pdf(Invoice $quotation)
     {
         abort_unless($quotation->type === 'quotation', 404);
@@ -83,6 +94,7 @@ class QuotationController extends Controller
             'quotation' => $quotation,
             'customer' => $quotation->customer,
             'org' => $org,
+            'brand' => \App\Support\PdfBranding::resolve($org),
         ])->setPaper('a4');
 
         return $pdf->stream("{$quotation->invoice_no}.pdf");

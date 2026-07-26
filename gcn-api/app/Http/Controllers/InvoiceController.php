@@ -62,6 +62,17 @@ class InvoiceController extends Controller
         return response()->json($this->payload($invoice), 201);
     }
 
+    public function destroy(Request $request, Invoice $invoice)
+    {
+        abort_unless($invoice->type === 'invoice', 404);
+        $no = $invoice->invoice_no;
+        $id = $invoice->id;
+        $invoice->delete();
+        AuditLog::record($request, 'delete', 'invoice', $id, ['invoice_no' => $no]);
+
+        return response()->json(['deleted' => true]);
+    }
+
     public function pdf(Invoice $invoice)
     {
         $invoice->load('customer');
@@ -70,6 +81,7 @@ class InvoiceController extends Controller
             'invoice' => $invoice,
             'customer' => $invoice->customer,
             'org' => $org,
+            'brand' => \App\Support\PdfBranding::resolve($org),
         ])->setPaper('a4');
 
         return $pdf->stream("{$invoice->invoice_no}.pdf");

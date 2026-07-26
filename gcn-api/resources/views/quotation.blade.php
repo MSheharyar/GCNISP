@@ -47,24 +47,19 @@
 </style>
 </head>
 <body>
-@php
-  $logoPath = public_path('images/gcn-logo.png');
-  $logoSrc = is_file($logoPath) ? 'data:image/png;base64,'.base64_encode(file_get_contents($logoPath)) : null;
-@endphp
 <div class="wrap">
 
   <table class="head">
     <tr>
       <td style="width: 48px;">
-        @if($logoSrc)
-          <img src="{{ $logoSrc }}" style="width: 38px; height: 38px; border-radius: 19px;" alt="">
+        @if($brand['logoSrc'])
+          <img src="{{ $brand['logoSrc'] }}" style="width: 38px; height: 38px; border-radius: 19px;" alt="">
         @else
-          <div class="brand-mark">G</div>
+          <div class="brand-mark" style="background: {{ $brand['color'] }};">{{ $brand['initial'] }}</div>
         @endif
       </td>
       <td>
-        <div class="brand-name">GLOBAL</div>
-        <div class="brand-sub">CABLE NETWORK</div>
+        <div class="brand-name">{{ $brand['name'] }}</div>
       </td>
       <td class="org">
         <b>{{ $org['business_name'] ?? '' }}</b><br>
@@ -73,7 +68,7 @@
       </td>
     </tr>
   </table>
-  <div class="rule"></div>
+  <div class="rule" style="border-bottom-color: {{ $brand['color'] }};"></div>
 
   <div class="title">QUOTATION</div>
 

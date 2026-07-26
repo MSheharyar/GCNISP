@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { FileText, Plus, Trash2, Search, Download, Loader2, Router, Cable, Wrench, PlusCircle } from 'lucide-react';
 import { api } from '../services/api';
 import { useApi } from '../lib/useApi';
-import { formatPKR, formatDate } from '../lib/format';
+import { formatPKR, formatDate, groupByMonth } from '../lib/format';
 import type { Customer, Quotation, QuotationLineItem } from '../types';
 import { Card, Button, cn } from '../components/ui/primitives';
 
@@ -25,6 +25,9 @@ export default function Quotations() {
   const { data: quotations, loading } = useApi(() => api.quotations(), [reload]);
   const { data: customers } = useApi(() => api.customers(), []);
   const [busyId, setBusyId] = useState<number | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  const groups = useMemo(() => groupByMonth(quotations ?? [], (q) => q.issueDate), [quotations]);
 
   const openPdf = async (q: Quotation) => {
     setBusyId(q.id);
@@ -32,6 +35,17 @@ export default function Quotations() {
       await api.openQuotationPdf(q.id);
     } finally {
       setBusyId(null);
+    }
+  };
+
+  const del = async (q: Quotation) => {
+    if (!confirm(`Delete quotation ${q.quotationNo}? This can't be undone.`)) return;
+    setDeletingId(q.id);
+    try {
+      await api.deleteQuotation(q.id);
+      setReload((r) => r + 1);
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -44,37 +58,52 @@ export default function Quotations() {
         <h3 className="mb-3 text-[15px] font-semibold text-slate-700">Recent quotations</h3>
         <Card className="overflow-hidden">
           {loading && <div className="px-4 py-8 text-center text-sm text-slate-400">Loading…</div>}
-          {quotations && quotations.length === 0 && (
+          {!loading && groups.length === 0 && (
             <div className="px-4 py-10 text-center text-sm text-slate-400">No quotations yet.</div>
           )}
-          <div className="divide-y divide-slate-50">
-            {quotations?.map((q) => {
-              const who = q.customerId ? customers?.find((c) => c.id === q.customerId)?.name : q.recipientName;
-              return (
-                <div key={q.id} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50">
-                  <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
-                    <FileText size={16} />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-[13px] font-medium text-slate-800">{who ?? 'Unnamed'}</div>
-                    <div className="text-[12px] text-slate-400">
-                      {q.quotationNo} · {formatDate(q.issueDate)}
+          {groups.map((g) => (
+            <div key={g.key}>
+              <div className="sticky top-0 bg-slate-50/80 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400 backdrop-blur">
+                {g.label} · {g.items.length}
+              </div>
+              <div className="divide-y divide-slate-50">
+                {g.items.map((q) => {
+                  const who = q.customerId ? customers?.find((c) => c.id === q.customerId)?.name : q.recipientName;
+                  return (
+                    <div key={q.id} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50">
+                      <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
+                        <FileText size={16} />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-[13px] font-medium text-slate-800">{who ?? 'Unnamed'}</div>
+                        <div className="text-[12px] text-slate-400">
+                          {q.quotationNo} · {formatDate(q.issueDate)}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-[13px] font-semibold text-slate-700">{formatPKR(q.totalAmount)}</div>
+                        <button
+                          onClick={() => openPdf(q)}
+                          disabled={busyId === q.id}
+                          className="mt-0.5 inline-flex items-center gap-1 text-[11.5px] font-medium text-brand-600 hover:text-brand-700"
+                        >
+                          {busyId === q.id ? <Loader2 size={11} className="animate-spin" /> : <Download size={11} />} PDF
+                        </button>
+                      </div>
+                      <button
+                        onClick={() => del(q)}
+                        disabled={deletingId === q.id}
+                        title="Delete quotation"
+                        className="shrink-0 rounded-md p-1.5 text-slate-300 hover:bg-rose-50 hover:text-rose-500"
+                      >
+                        {deletingId === q.id ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
+                      </button>
                     </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-[13px] font-semibold text-slate-700">{formatPKR(q.totalAmount)}</div>
-                    <button
-                      onClick={() => openPdf(q)}
-                      disabled={busyId === q.id}
-                      className="mt-0.5 inline-flex items-center gap-1 text-[11.5px] font-medium text-brand-600 hover:text-brand-700"
-                    >
-                      {busyId === q.id ? <Loader2 size={11} className="animate-spin" /> : <Download size={11} />} PDF
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </Card>
       </div>
     </div>
