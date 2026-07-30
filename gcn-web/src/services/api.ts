@@ -130,6 +130,7 @@ export interface ChargeEditPayload {
   receivedAmount?: number | null;
   receivedDate?: string | null;
   method?: string | null;
+  balance?: number | null; // reconcile the customer's outstanding to this figure
 }
 
 export interface MonthlyData {

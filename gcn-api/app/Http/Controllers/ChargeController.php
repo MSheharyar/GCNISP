@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Account;
 use App\Models\AuditLog;
 use App\Models\Charge;
 use App\Models\Customer;
@@ -179,6 +180,10 @@ class ChargeController extends Controller
             'receivedAmount' => ['nullable', 'integer', 'min:0'],
             'receivedDate' => ['nullable', 'date'],
             'method' => ['nullable', 'in:cash,jazz,bank,other'],
+            // Optional: reconcile the customer's outstanding to this exact figure
+            // (matches a physical register). Any difference is absorbed into a
+            // single hidden "Balance adjustment" entry.
+            'balance' => ['nullable', 'integer'],
         ]);
 
         return DB::transaction(function () use ($data, $charge, $request) {
@@ -213,8 +218,14 @@ class ChargeController extends Controller
                 $existing->each->delete();
             }
 
-            $this->recomputeBalance($customer);
-            AuditLog::record($request, 'edit_charge', 'charge', $charge->id, ['amount' => $data['amount'], 'paid' => $data['paid']]);
+            // If a target balance was given, reconcile to it exactly; otherwise
+            // let the balance fall out of the ledger naturally.
+            if (array_key_exists('balance', $data) && $data['balance'] !== null) {
+                $this->reconcileBalance($customer, (int) $data['balance']);
+            } else {
+                $this->recomputeBalance($customer);
+            }
+            AuditLog::record($request, 'edit_charge', 'charge', $charge->id, ['amount' => $data['amount'], 'paid' => $data['paid'], 'balance' => $data['balance'] ?? null]);
 
             return response()->json(['ok' => true]);
         });
@@ -232,6 +243,45 @@ class ChargeController extends Controller
 
             return response()->json(['deleted' => true]);
         });
+    }
+
+    private const RECONCILE = 'Balance adjustment';
+
+    // Force the customer's outstanding to $target (a physically-verified figure).
+    // The gap between the natural ledger and $target is parked in ONE hidden
+    // adjustment entry (a charge if they owe more, a credit payment if less), so
+    // the balance sticks and still reconciles against Σcharges − Σpayments.
+    private function reconcileBalance(Customer $c, int $target): void
+    {
+        // Clear any prior adjustment (both directions) so it never stacks.
+        Charge::where('customer_id', $c->id)->where('recorded_by', self::RECONCILE)->forceDelete();
+        Payment::where('customer_id', $c->id)->where('recorded_by', self::RECONCILE)->forceDelete();
+
+        $natural = (int) Charge::where('customer_id', $c->id)->sum('amount_charged')
+                 - (int) Payment::where('customer_id', $c->id)->sum('amount_received');
+        $diff = $target - $natural;
+        $date = optional($c->created_at)->toDateString() ?? now()->toDateString();
+
+        if ($diff > 0) {
+            Charge::create([
+                'customer_id' => $c->id,
+                'account_id' => $c->current_account_id ?? Account::query()->value('id'),
+                'amount_charged' => $diff, 'charge_date' => $date,
+                'billing_period_label' => 'Balance adjustment', 'source' => 'opening',
+                'recorded_by' => self::RECONCILE, 'pending' => false,
+            ]);
+        } elseif ($diff < 0) {
+            Payment::create([
+                'customer_id' => $c->id, 'charge_id' => null, 'amount_received' => -$diff,
+                'received_date' => $date, 'method' => 'other', 'is_arrears' => false,
+                'recorded_by' => self::RECONCILE,
+            ]);
+        }
+
+        $c->outstanding_balance = $target;
+        $fee = optional($c->loadMissing('package')->package)->price ?? $c->loadMissing('subscription')->subscription?->frozen_amount ?? 0;
+        $c->months_overdue = ($fee > 0 && $target > 0) ? (int) round($target / $fee) : 0;
+        $c->save();
     }
 
     // Outstanding = Σ charges − Σ payments across the customer's whole ledger

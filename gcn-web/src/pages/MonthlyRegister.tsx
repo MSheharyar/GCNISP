@@ -257,6 +257,7 @@ function EditRowModal({
   const [receivedAmount, setReceivedAmount] = useState(String(row.paid ? row.amount : row.amount));
   const [receivedDate, setReceivedDate] = useState(row.paidDate ?? row.chargeDate);
   const [method, setMethod] = useState(row.method ?? 'cash');
+  const [balance, setBalance] = useState(String(row.balance));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -275,6 +276,9 @@ function EditRowModal({
         receivedAmount: paid ? Number(receivedAmount) || 0 : null,
         receivedDate: paid ? receivedDate : null,
         method: paid ? method : null,
+        // Only force the balance when you actually change it; otherwise let it
+        // recompute from the charges/payments above.
+        balance: balance.trim() !== '' && balance !== String(row.balance) ? Number(balance) : null,
       });
       onSaved();
     } catch (e) {
@@ -335,6 +339,23 @@ function EditRowModal({
               </Field>
             </div>
           )}
+        </div>
+
+        <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-3">
+          <Field label="Running balance — reconcile to your physical register">
+            <div className="flex items-center gap-2">
+              <input inputMode="numeric" className={cn(input, 'font-semibold')} value={balance} onChange={(e) => setBalance(e.target.value.replace(/[^0-9-]/g, ''))} />
+              {balance !== String(row.balance) && (
+                <button type="button" onClick={() => setBalance(String(row.balance))} className="whitespace-nowrap text-[12px] font-medium text-brand-600">
+                  reset
+                </button>
+              )}
+            </div>
+          </Field>
+          <p className="mt-1.5 text-[11.5px] text-slate-500">
+            Sets this customer's outstanding to exactly this figure; any difference from the charges/payments above is
+            parked as a hidden adjustment. Was {formatPKR(row.balance)}.
+          </p>
         </div>
 
         {error && <div className="rounded-lg bg-rose-50 px-3 py-2 text-[13px] text-rose-700">{error}</div>}
