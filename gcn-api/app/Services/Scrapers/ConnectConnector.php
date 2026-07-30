@@ -104,10 +104,45 @@ class ConnectConnector
             'expiring' => $labels['expiring in next 3 days'] ?? null,
             'new_users' => null,
             'balance' => isset($bal[1]) ? (int) str_replace(',', '', $bal[1]) : null,
-            'topup_received' => null,
+            // Credit the company added to this reseller's wallet this month — the
+            // monthly budget available to spend on customers' packages.
+            'topup_received' => $this->fetchTopupReceived($client, now()->format('Y-m')),
             'topup_send' => null,
             'packages' => $this->fetchPackageWise($client),
         ];
+    }
+
+    /**
+     * Sum the credit the company added to this reseller's wallet for the given
+     * month (YYYY-MM), from the Balance Logs report. Non-fatal on failure.
+     */
+    private function fetchTopupReceived(Client $client, string $ym): ?int
+    {
+        try {
+            // The report is server-filtered by a "YYYY-MM-01 - YYYY-MM-last" range;
+            // the named form params are accepted directly (no hashed key needed).
+            $range = $ym.'-01 - '.date('Y-m-t', strtotime($ym.'-01'));
+            $html = (string) $client->get(config('scrapers.connect.balance_logs_url'), [
+                'query' => [
+                    'SortBy' => '%', 'SortOrder' => '', 'PageNumber' => '1',
+                    'DealerID' => '', 'Type' => '', 'AssignBy' => '', 'DateRange' => $range,
+                ],
+            ])->getBody();
+
+            $total = 0;
+            foreach ($this->tableRows($html) as $cells) {
+                // [#, Timestamp, Dealer, Credit, Payment, Description, By] — the
+                // numeric-# guard skips the header and the "Total" footer row.
+                if (count($cells) < 5 || ! is_numeric(trim($cells[0]))) {
+                    continue;
+                }
+                $total += (int) preg_replace('/[^0-9]/', '', $cells[3]); // Credit column
+            }
+
+            return $total;
+        } catch (\Throwable $e) {
+            return null; // non-fatal — the rest of the dashboard still returns
+        }
     }
 
     /**

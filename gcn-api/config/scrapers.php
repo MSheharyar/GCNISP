@@ -7,6 +7,8 @@ return [
     'connect' => [
         'login_url' => env('CONNECT_LOGIN_URL', 'https://www.connect.net.pk/login'),
         'report_url' => env('CONNECT_REPORT_URL', 'https://www.connect.net.pk/customers/report/recharge-logs'),
+        // Credit the company added to the reseller wallet (monthly top-up budget).
+        'balance_logs_url' => env('CONNECT_BALANCE_LOGS_URL', 'https://www.connect.net.pk/dealers/report/balance-logs'),
         // account name (matches accounts table) => portal credentials
         'accounts' => [
             'GCNDIGITAL' => ['user' => env('CONNECT_GCNDIGITAL_USER'), 'pass' => env('CONNECT_GCNDIGITAL_PASS')],

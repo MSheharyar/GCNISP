@@ -124,7 +124,7 @@ function AccountCard({ s }: { s: PortalStat }) {
         </div>
       )}
 
-      {isFiber && s.topupReceived != null && (
+      {s.topupReceived != null && (
         <div className="mt-2.5 flex justify-between rounded-lg bg-slate-50 px-3 py-2 text-[12px]">
           <span className="text-slate-500">Top-up received (month)</span>
           <span className="font-semibold text-emerald-600">{formatPKR(s.topupReceived)}</span>
