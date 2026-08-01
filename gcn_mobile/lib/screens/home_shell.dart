@@ -19,34 +19,52 @@ class _HomeShellState extends State<HomeShell> {
 
   @override
   Widget build(BuildContext context) {
-    final pages = [
-      DashboardScreen(onOpenRecharges: () => setState(() => _index = 1)),
-      const ChargedTodayScreen(),
-      const RecoveryScreen(),
-      const MoreScreen(),
+    // The dealer's enabled modules decide which tabs (and the FAB) appear.
+    final internet = api.user?.hasModule('internet') ?? true;
+
+    final tabs = <_Tab>[
+      _Tab(Icons.grid_view_outlined, Icons.grid_view_rounded, 'Dashboard',
+          DashboardScreen(onOpenRecharges: _goToRecharges)),
+      if (internet) _Tab(Icons.bolt_outlined, Icons.bolt, 'Recharges', const ChargedTodayScreen()),
+      if (internet) _Tab(Icons.savings_outlined, Icons.savings, 'Recovery', const RecoveryScreen()),
+      _Tab(Icons.person_outline, Icons.person, 'More', const MoreScreen()),
     ];
+    if (_index >= tabs.length) _index = 0;
+    final onMore = tabs[_index].label == 'More';
+    final showFab = internet && !onMore && !(api.user?.isViewer ?? false);
+
     return Scaffold(
-      body: IndexedStack(index: _index, children: pages),
-      floatingActionButton: (_index == 3 || (api.user?.isViewer ?? false))
-          ? null
-          : FloatingActionButton.extended(
+      body: IndexedStack(index: _index, children: [for (final t in tabs) t.page]),
+      floatingActionButton: showFab
+          ? FloatingActionButton.extended(
               onPressed: () => showRecordPaymentSheet(context),
               backgroundColor: GcnColors.emerald,
               foregroundColor: Colors.white,
               elevation: 2,
               icon: const Icon(Icons.payments_rounded, size: 20),
               label: const Text('Record payment', style: TextStyle(fontWeight: FontWeight.w600)),
-            ),
+            )
+          : null,
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
         onDestinationSelected: (i) => setState(() => _index = i),
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.grid_view_outlined), selectedIcon: Icon(Icons.grid_view_rounded), label: 'Dashboard'),
-          NavigationDestination(icon: Icon(Icons.bolt_outlined), selectedIcon: Icon(Icons.bolt), label: 'Recharges'),
-          NavigationDestination(icon: Icon(Icons.savings_outlined), selectedIcon: Icon(Icons.savings), label: 'Recovery'),
-          NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'More'),
+        destinations: [
+          for (final t in tabs)
+            NavigationDestination(icon: Icon(t.icon), selectedIcon: Icon(t.selectedIcon), label: t.label),
         ],
       ),
     );
   }
+
+  void _goToRecharges() {
+    final internet = api.user?.hasModule('internet') ?? true;
+    if (internet) setState(() => _index = 1); // Recharges is tab 1 when internet is on
+  }
+}
+
+class _Tab {
+  final IconData icon, selectedIcon;
+  final String label;
+  final Widget page;
+  _Tab(this.icon, this.selectedIcon, this.label, this.page);
 }

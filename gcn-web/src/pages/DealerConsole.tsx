@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Plus, Building2, UserRound, Copy, Check, Loader2, Power, PowerOff, Palette, Inbox, Phone, SlidersHorizontal } from 'lucide-react';
-import { api, MODULES, type Dealer, type DealerCreatePayload, type Lead } from '../services/api';
+import { api, MODULES, MODULE_RECOMMENDS, type Dealer, type DealerCreatePayload, type Lead } from '../services/api';
 import { Card, CardHeader, Button, Modal, cn } from '../components/ui/primitives';
 
 const inputCls =
@@ -409,7 +409,17 @@ function ModulesModal({ dealer, onClose, onSaved }: { dealer: Dealer | null; onC
 
   if (!dealer) return null;
 
+  const label = (k: string) => MODULES.find((m) => m.key === k)?.label ?? k;
   const toggle = (key: string) => setEnabled((e) => (e.includes(key) ? e.filter((k) => k !== key) : [...e, key]));
+
+  // Recommended companions that are ticked-on but whose partners are missing.
+  const missing = new Map<string, string[]>(); // missingKey -> modules that recommend it
+  for (const key of enabled) {
+    for (const rec of MODULE_RECOMMENDS[key] ?? []) {
+      if (!enabled.includes(rec)) missing.set(rec, [...(missing.get(rec) ?? []), key]);
+    }
+  }
+  const addRecommended = () => setEnabled((e) => Array.from(new Set([...e, ...missing.keys()])));
 
   const save = async () => {
     setSaving(true);
@@ -436,6 +446,24 @@ function ModulesModal({ dealer, onClose, onSaved }: { dealer: Dealer | null; onC
             </label>
           ))}
         </div>
+        {missing.size > 0 && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50/60 px-3 py-2 text-[12.5px] text-amber-800">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <span className="font-semibold">Works best with:</span>{' '}
+                {[...missing.entries()].map(([rec, by], i) => (
+                  <span key={rec}>
+                    {i > 0 && ', '}
+                    <b>{label(rec)}</b> <span className="text-amber-600">(for {by.map(label).join(' & ')})</span>
+                  </span>
+                ))}
+              </div>
+              <button type="button" onClick={addRecommended} className="shrink-0 rounded-md bg-amber-100 px-2 py-1 text-[12px] font-medium text-amber-800 hover:bg-amber-200">
+                Add
+              </button>
+            </div>
+          </div>
+        )}
         {error && <div className="rounded-lg bg-rose-50 px-3 py-2 text-[13px] text-rose-700">{error}</div>}
         <div className="flex items-center justify-between pt-1">
           <div className="flex gap-2">
@@ -459,6 +487,7 @@ const DEFAULT_COLOR = '#1a66e0';
 function BrandingModal({ dealer, onClose, onSaved }: { dealer: Dealer | null; onClose: () => void; onSaved: (d: Dealer) => void }) {
   const [color, setColor] = useState(DEFAULT_COLOR);
   const [logo, setLogo] = useState('');
+  const [apk, setApk] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -466,6 +495,7 @@ function BrandingModal({ dealer, onClose, onSaved }: { dealer: Dealer | null; on
     if (!dealer) return;
     setColor(dealer.primaryColor ?? DEFAULT_COLOR);
     setLogo(dealer.logoUrl ?? '');
+    setApk(dealer.apkUrl ?? '');
     setError(null);
   }, [dealer]);
 
@@ -478,6 +508,7 @@ function BrandingModal({ dealer, onClose, onSaved }: { dealer: Dealer | null; on
       const updated = await api.updateDealer(dealer.id, {
         primaryColor: color,
         logoUrl: logo.trim() || null,
+        apkUrl: apk.trim() || null,
       });
       onSaved(updated);
     } catch (e) {
@@ -539,6 +570,17 @@ function BrandingModal({ dealer, onClose, onSaved }: { dealer: Dealer | null; on
             />
           </div>
           <p className="mt-1 text-[11.5px] text-slate-400">Square image works best. Leave blank to keep the default mark.</p>
+        </div>
+
+        <div>
+          <label className="mb-1.5 block text-[12.5px] font-medium text-slate-600">Mobile app download link (APK)</label>
+          <input
+            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
+            value={apk}
+            onChange={(e) => setApk(e.target.value)}
+            placeholder="https://drive.google.com/uc?export=download&id=…"
+          />
+          <p className="mt-1 text-[11.5px] text-slate-400">Shown as a scannable QR in this dealer's Settings. Blank = the global default APK.</p>
         </div>
 
         {error && <div className="rounded-lg bg-rose-50 px-3 py-2 text-[13px] text-rose-700">{error}</div>}

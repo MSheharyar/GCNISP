@@ -8,15 +8,20 @@ class AuthUser {
   final int id;
   final String name, email, role;
   final bool isActive;
-  AuthUser({required this.id, required this.name, required this.email, required this.role, required this.isActive});
+  final List<String> modules; // enabled feature modules for this dealer
+  AuthUser({required this.id, required this.name, required this.email, required this.role, required this.isActive, required this.modules});
   factory AuthUser.fromJson(Map<String, dynamic> j) => AuthUser(
         id: _int(j['id']),
         name: _str(j['name']),
         email: _str(j['email']),
         role: _str(j['role']),
         isActive: j['isActive'] == true,
+        modules: ((j['modules'] as List?) ?? const []).map((e) => e.toString()).toList(),
       );
   bool get isViewer => role == 'viewer';
+
+  /// A module is on if the dealer has it, or if the list is empty (older API).
+  bool hasModule(String key) => modules.isEmpty || modules.contains(key);
 }
 
 class RecoveryCustomer {

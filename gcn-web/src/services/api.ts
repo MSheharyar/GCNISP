@@ -288,6 +288,19 @@ export const MODULES: { key: string; label: string }[] = [
   { key: 'staff', label: 'Staff Management' },
 ];
 
+// Which modules each one works best alongside (advisory — shown in the console).
+export const MODULE_RECOMMENDS: Record<string, string[]> = {
+  monthly: ['internet'],
+  sync: ['internet', 'monthly'],
+  invoices: ['internet'],
+  quotations: ['internet'],
+  topups: ['sync'],
+  reports: ['internet', 'cashbook'],
+  cashbook: ['expenses'],
+  expenses: ['cashbook'],
+  cable: ['cashbook'],
+};
+
 export interface Dealer {
   id: number;
   name: string;
@@ -309,6 +322,7 @@ export interface Branding {
   name: string | null;
   primaryColor: string | null;
   logoUrl: string | null;
+  apkUrl?: string | null;
 }
 
 export interface LeadPayload {

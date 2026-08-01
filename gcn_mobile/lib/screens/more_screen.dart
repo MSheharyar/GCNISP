@@ -20,6 +20,15 @@ class MoreScreen extends StatelessWidget {
     final isViewer = user?.isViewer ?? false;
     void open(Widget s) => Navigator.of(context).push(MaterialPageRoute(builder: (_) => s));
     void soon() => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(behavior: SnackBarBehavior.floating, content: Text('Coming soon on mobile')));
+
+    // Only the modules the owner enabled for this dealer.
+    bool mod(String k) => user?.hasModule(k) ?? true;
+    final menu = <Widget>[
+      if (mod('monthly')) _Item(Icons.calendar_month_rounded, 'Monthly register', 'Per-month recharge report', onTap: () => open(const MonthlyRegisterScreen())),
+      if (!isViewer && mod('internet')) _Item(Icons.people_rounded, 'Customers', 'All internet subscribers', onTap: () => open(const CustomersScreen())),
+      if (!isViewer && mod('cashbook')) _Item(Icons.receipt_long_rounded, 'Cash Book', 'Kharcha & profit', onTap: () => open(const CashBookScreen())),
+      if (!isViewer && mod('cable')) _Item(Icons.tv_rounded, 'TV Cable', 'Cable subscribers', onTap: () => open(const CableScreen())),
+    ];
     return Scaffold(
       appBar: AppBar(
         backgroundColor: GcnColors.surface,
@@ -44,21 +53,18 @@ class MoreScreen extends StatelessWidget {
             ]),
           ),
           const SizedBox(height: 16),
-          GcnCard(
-            padding: EdgeInsets.zero,
-            child: Column(children: [
-              _Item(Icons.calendar_month_rounded, 'Monthly register', 'Per-month recharge report', onTap: () => open(const MonthlyRegisterScreen())),
-              if (!isViewer) ...[
-                const Divider(height: 1, color: GcnColors.hairline, indent: 60),
-                _Item(Icons.receipt_long_rounded, 'Cash Book', 'Kharcha & profit', onTap: () => open(const CashBookScreen())),
-                const Divider(height: 1, color: GcnColors.hairline, indent: 60),
-                _Item(Icons.tv_rounded, 'TV Cable', 'Cable subscribers', onTap: () => open(const CableScreen())),
-                const Divider(height: 1, color: GcnColors.hairline, indent: 60),
-                _Item(Icons.people_rounded, 'Customers', 'All internet subscribers', onTap: () => open(const CustomersScreen())),
-              ],
-            ]),
-          ),
-          const SizedBox(height: 16),
+          if (menu.isNotEmpty) ...[
+            GcnCard(
+              padding: EdgeInsets.zero,
+              child: Column(children: [
+                for (var i = 0; i < menu.length; i++) ...[
+                  if (i > 0) const Divider(height: 1, color: GcnColors.hairline, indent: 60),
+                  menu[i],
+                ],
+              ]),
+            ),
+            const SizedBox(height: 16),
+          ],
           GcnCard(
             padding: EdgeInsets.zero,
             child: Column(children: [

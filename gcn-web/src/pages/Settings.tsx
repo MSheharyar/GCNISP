@@ -1,4 +1,5 @@
-import { Save, AlertTriangle } from 'lucide-react';
+import { Save, AlertTriangle, Smartphone, Download } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import { api, lookup } from '../services/api';
 import { useApi } from '../lib/useApi';
 import { Card, CardHeader, PackageTag, Button, cn } from '../components/ui/primitives';
@@ -13,9 +14,39 @@ export default function Settings() {
   const { data: packages } = useApi(() => api.packages(), []);
   const { data: accounts } = useApi(() => api.accounts(), []);
   const { data: speedMap } = useApi(() => api.speedMap(), []);
+  const { data: branding } = useApi(() => api.branding(), []);
 
   return (
     <div className="max-w-4xl space-y-5">
+      {/* Get the mobile app — only when an APK link is configured */}
+      {branding?.apkUrl && (
+        <Card className="p-5">
+          <CardHeader title="Get the mobile app" subtitle="Scan the code on an Android phone to download and install the GCN app." />
+          <div className="flex flex-col items-center gap-5 pt-4 sm:flex-row sm:items-center">
+            <div className="rounded-xl border border-slate-200 bg-white p-3">
+              <QRCodeSVG value={branding.apkUrl} size={148} level="M" />
+            </div>
+            <div className="flex-1 text-center sm:text-left">
+              <p className="text-[13.5px] text-slate-600">
+                Open the phone camera, point it at the QR, and tap the link to download the APK. When Android asks, allow
+                <b> install from this source</b> to finish setup.
+              </p>
+              <a
+                href={branding.apkUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3.5 py-2 text-sm font-medium text-white hover:bg-brand-700"
+              >
+                <Download size={15} /> Download APK
+              </a>
+              <div className="mt-2 flex items-center justify-center gap-1.5 text-[12px] text-slate-400 sm:justify-start">
+                <Smartphone size={13} /> Android only
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
+
       {/* Org details */}
       <Card className="p-5">
         <CardHeader title="Organization details" subtitle="Used on invoices, receipts, and the app footer." />

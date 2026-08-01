@@ -22,6 +22,8 @@ class ReferenceController extends Controller
             'name' => $dealer?->name,
             'primaryColor' => $dealer?->primary_color,
             'logoUrl' => $dealer?->logo_url,
+            // Effective mobile-app download link: the dealer's own, else the global default.
+            'apkUrl' => ($dealer?->apk_url ?: config('mobile.apk_url')) ?: null,
         ];
     }
 
