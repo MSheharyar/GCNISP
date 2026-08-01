@@ -13,8 +13,10 @@ class DashboardController extends Controller
     {
         $d = Tenant::id(); // current dealer — every raw query is scoped to it
 
-        $latestMonth = DB::table('payments')->where('dealer_id', $d)->max(DB::raw("to_char(received_date,'YYYY-MM')")) ?? '2020-01';
-        $latestDay = DB::table('payments')->where('dealer_id', $d)->max('received_date');
+        // "This month" / "today" follow the real calendar (not the last month that
+        // happened to have a payment), so the dashboard rolls over on the 1st.
+        $latestMonth = now()->format('Y-m');
+        $latestDay = now()->toDateString();
 
         $collectedThisMonth = (int) DB::table('payments')->where('dealer_id', $d)->whereRaw("to_char(received_date,'YYYY-MM') = ?", [$latestMonth])->sum('amount_received');
         $collectedToday = (int) DB::table('payments')->where('dealer_id', $d)->where('received_date', $latestDay)->sum('amount_received');
