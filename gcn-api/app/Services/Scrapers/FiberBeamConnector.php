@@ -39,6 +39,61 @@ class FiberBeamConnector
         return $client;
     }
 
+    /**
+     * Wallet top-up ("FRANCHISE TOPUP RECEVIED") grouped by month across a range,
+     * from the dealer ledger. One login + one fetch for the whole window.
+     *
+     * @return array<string,int> ['YYYY-MM' => amount]
+     */
+    public function fetchTopupByMonth(string $from, string $to, ?string $dealer = null, ?string $user = null, ?string $pass = null): array
+    {
+        $cfg = config('scrapers.fiberbeam');
+        $client = $this->login($user, $pass);
+        $dealer = $dealer ?? $cfg['dealer'];
+
+        // The ledger caps rows, so a wide range drops the sparse top-up entries.
+        // Fetch it one month at a time within the single logged-in session.
+        $byMonth = [];
+        $cur = \Illuminate\Support\Carbon::parse($from)->startOfMonth();
+        $end = \Illuminate\Support\Carbon::parse($to)->startOfMonth();
+        while ($cur <= $end) {
+            $ym = $cur->format('Y-m');
+            $html = (string) $client->post('https://billing.fiber-beam.net/function/dealer_ajax/ledger.php', [
+                'form_params' => ['sd' => $cur->format('Y-m-01'), 'ed' => $cur->copy()->endOfMonth()->format('Y-m-d'), 'dealer' => $dealer],
+                'headers' => ['X-Requested-With' => 'XMLHttpRequest', 'Referer' => 'https://billing.fiber-beam.net/en/ledger.php'],
+            ])->getBody();
+
+            if (str_contains($html, 'Access Denied')) {
+                throw new RuntimeException('Fiber Beam: ledger access denied.');
+            }
+
+            // Ledger cols: [INV#, TYPE, USER/DEALER, DATE, AMOUNT, …]. Top-ups are
+            // the wallet-credit rows; the amount is the cell right after the (ISO)
+            // date, robust to trailing columns shifting.
+            $sum = 0;
+            foreach ($this->tableRows($html) as $cells) {
+                $type = strtoupper($cells[1] ?? '');
+                if (! str_contains($type, 'TOPUP') && ! str_contains($type, 'TOP UP')) {
+                    continue;
+                }
+                $dateIdx = null;
+                foreach ($cells as $i => $v) {
+                    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', trim($v))) {
+                        $dateIdx = $i;
+                        break;
+                    }
+                }
+                if ($dateIdx !== null && isset($cells[$dateIdx + 1])) {
+                    $sum += (int) preg_replace('/[^0-9]/', '', $cells[$dateIdx + 1]);
+                }
+            }
+            $byMonth[$ym] = $sum;
+            $cur->addMonth();
+        }
+
+        return $byMonth;
+    }
+
     /** @return array<array{userId:string,name:string,packageLabel:string,loadDate:string,price:int}> */
     public function fetchRecharges(string $startDate, string $endDate, ?string $dealer = null, ?string $user = null, ?string $pass = null): array
     {

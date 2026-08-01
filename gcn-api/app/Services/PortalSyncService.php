@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Account;
 use App\Models\Charge;
 use App\Models\Customer;
+use App\Models\MonthlyTopup;
 use App\Models\PortalStat;
 use App\Models\SyncRow;
 use App\Models\SyncRun;
@@ -131,6 +132,45 @@ class PortalSyncService
                 $this->captureDashboard($account, $cred['source'], fn () => $cred['source'] === 'connect'
                     ? $this->connect->fetchDashboard($cred['user'], $cred['pass'])
                     : $this->fiber->fetchDashboard($cred['user'], $cred['pass']));
+            });
+        }
+    }
+
+    /**
+     * Cache each account's wallet top-up (company credit) for the last N months
+     * into monthly_topups. In a request this covers the current dealer's accounts;
+     * from the scheduler (no tenant) it covers everyone's.
+     */
+    public function syncTopups(int $months = 6): void
+    {
+        $window = [];
+        $cur = now()->startOfMonth()->subMonths($months - 1);
+        for ($i = 0; $i < $months; $i++) {
+            $window[] = $cur->format('Y-m');
+            $cur->addMonth();
+        }
+        $from = $window[0].'-01';
+        $to = now()->endOfMonth()->toDateString();
+
+        foreach (Account::all() as $account) {
+            $cred = $this->credentialsFor($account);
+            if (! $cred) {
+                continue;
+            }
+            Tenant::run($account->dealer_id, function () use ($account, $cred, $from, $to, $window) {
+                try {
+                    $byMonth = $cred['source'] === 'connect'
+                        ? $this->connect->fetchTopupByMonth($cred['user'], $cred['pass'], $from, $to)
+                        : $this->fiber->fetchTopupByMonth($from, $to, $cred['dealer'], $cred['user'], $cred['pass']);
+                } catch (Throwable $e) {
+                    return; // skip this account; others still run
+                }
+                foreach ($window as $ym) {
+                    MonthlyTopup::updateOrCreate(
+                        ['account_id' => $account->id, 'ym' => $ym],
+                        ['amount' => $byMonth[$ym] ?? 0, 'captured_at' => now()]
+                    );
+                }
             });
         }
     }

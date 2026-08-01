@@ -140,6 +140,13 @@ export interface MonthlyData {
   summary: { count: number; charged: number; collected: number; paidCount: number };
 }
 
+export interface TopupReport {
+  months: string[];
+  accounts: { accountId: number; account: string; byMonth: Record<string, number>; total: number }[];
+  totalsByMonth: Record<string, number>;
+  capturedAt: string | null;
+}
+
 export interface PortalStat {
   accountId: number;
   account: string;
@@ -359,6 +366,8 @@ export const api = {
   runSync: () => req<{ runs: SyncRun[]; rows: SyncRow[] }>('/connect-sync/run', { method: 'POST' }),
   portalStats: () => req<PortalStat[]>('/portal-stats'),
   refreshPortalStats: () => req<PortalStat[]>('/portal-stats/refresh', { method: 'POST' }),
+  topups: () => req<TopupReport>('/topups'),
+  refreshTopups: () => req<TopupReport>('/topups/refresh', { method: 'POST' }),
   portalAccounts: () => req<PortalAccount[]>('/portal-accounts'),
   updatePortalAccount: (id: number, payload: PortalAccountPayload) =>
     req<PortalAccount>(`/portal-accounts/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),

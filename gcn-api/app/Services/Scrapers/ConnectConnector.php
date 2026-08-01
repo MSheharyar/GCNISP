@@ -113,6 +113,35 @@ class ConnectConnector
     }
 
     /**
+     * Wallet top-up (company credit) grouped by month across a date range.
+     * One login + one report fetch for the whole window.
+     *
+     * @return array<string,int> ['YYYY-MM' => credit]
+     */
+    public function fetchTopupByMonth(string $user, string $pass, string $from, string $to): array
+    {
+        $client = $this->login($user, $pass);
+        $html = (string) $client->get(config('scrapers.connect.balance_logs_url'), [
+            'query' => [
+                'SortBy' => '%', 'SortOrder' => '', 'PageNumber' => '1',
+                'DealerID' => '', 'Type' => '', 'AssignBy' => '', 'DateRange' => $from.' - '.$to,
+            ],
+        ])->getBody();
+
+        $byMonth = [];
+        foreach ($this->tableRows($html) as $cells) {
+            // [#, Timestamp, Dealer, Credit, Payment, Description, By]
+            if (count($cells) < 5 || ! is_numeric(trim($cells[0]))) {
+                continue; // skip header + Total footer
+            }
+            $ym = substr(trim($cells[1]), 0, 7);
+            $byMonth[$ym] = ($byMonth[$ym] ?? 0) + (int) preg_replace('/[^0-9]/', '', $cells[3]);
+        }
+
+        return $byMonth;
+    }
+
+    /**
      * Sum the credit the company added to this reseller's wallet for the given
      * month (YYYY-MM), from the Balance Logs report. Non-fatal on failure.
      */

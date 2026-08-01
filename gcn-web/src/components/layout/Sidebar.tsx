@@ -16,6 +16,7 @@ import {
   CalendarDays,
   ChevronRight,
   Building2,
+  Landmark,
 } from 'lucide-react';
 import Logo from '../Logo';
 import { cn } from '../ui/primitives';
@@ -51,6 +52,7 @@ const SECTIONS: { title?: string; items: { to: string; label: string; icon: type
     title: 'Money',
     items: [
       { to: '/cashbook', label: 'Cash Book', icon: Wallet },
+      { to: '/topups', label: 'Top-up received', icon: Landmark },
       { to: '/reports', label: 'Reports', icon: BarChart3 },
     ],
   },

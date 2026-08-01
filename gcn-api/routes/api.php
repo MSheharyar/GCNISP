@@ -15,6 +15,7 @@ use App\Http\Controllers\QuotationController;
 use App\Http\Controllers\ReferenceController;
 use App\Http\Controllers\StaffController;
 use App\Http\Controllers\SyncController;
+use App\Http\Controllers\TopupController;
 use Illuminate\Support\Facades\Route;
 
 // ── Public ────────────────────────────────────────────────────────────────
@@ -69,6 +70,8 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
         Route::get('/cable-customers', [CableController::class, 'index']);
         Route::get('/cable-customers/{cable}', [CableController::class, 'show']);
         Route::get('/cable-customers/{cable}/ledger', [CableController::class, 'ledger']);
+        Route::get('/topups', [TopupController::class, 'index']);
+        Route::post('/topups/refresh', [TopupController::class, 'refresh']);
     });
 
     // ── Writes (admin + operator only) ─────────────────────────────────────

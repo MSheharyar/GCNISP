@@ -16,6 +16,7 @@ import CashBook from './pages/CashBook';
 import Invoices from './pages/Invoices';
 import Quotations from './pages/Quotations';
 import Reports from './pages/Reports';
+import Topups from './pages/Topups';
 import Staff from './pages/Staff';
 import Settings from './pages/Settings';
 import DealerConsole from './pages/DealerConsole';
@@ -50,6 +51,7 @@ export default function App() {
           <Route path="/cable" element={<Cable />} />
           <Route path="/cable/:id" element={<CableDetail />} />
           <Route path="/cashbook" element={<CashBook />} />
+          <Route path="/topups" element={<Topups />} />
           <Route path="/invoices" element={<Invoices />} />
           <Route path="/quotations" element={<Quotations />} />
           <Route path="/reports" element={<Reports />} />
