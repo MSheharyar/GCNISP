@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { dealerSlug } from '../lib/branding';
 import {
   RefreshCw, Clock, HandCoins, Receipt, Wallet, CalendarDays, FileText, Tv, UserCog, Percent,
   ArrowRight, Check, Loader2, Smartphone, Monitor, ChevronDown, ShieldCheck, Zap,
@@ -15,6 +16,10 @@ export default function Landing() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [leadOpen, setLeadOpen] = useState(false);
+
+  // A dealer subdomain isn't the marketing site — send it to its branded login
+  // (or dashboard if already signed in).
+  if (dealerSlug()) return <Navigate to={user ? '/dashboard' : '/login'} replace />;
 
   return (
     <div className="min-h-screen bg-white text-slate-800">

@@ -22,6 +22,8 @@ use Illuminate\Support\Facades\Route;
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:6,1');
 // Landing-page "Request access" lead form (rate-limited).
 Route::post('/public/leads', [LeadController::class, 'store'])->middleware('throttle:10,1');
+// Pre-login branding for a dealer subdomain (name/colour/logo only).
+Route::get('/public/branding/{slug}', [ReferenceController::class, 'publicBranding'])->middleware('throttle:60,1');
 
 // ── SaaS owner console (super-admin only, NOT dealer-scoped) ────────────────
 Route::middleware(['auth:sanctum', 'superadmin'])->prefix('admin')->group(function () {

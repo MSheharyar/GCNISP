@@ -12,6 +12,19 @@ use App\Support\Tenant;
 
 class ReferenceController extends Controller
 {
+    // Public branding for a subdomain (pre-login theming). No auth, safe subset:
+    // just name/colour/logo. Unknown slug → nulls (client falls back to default).
+    public function publicBranding(string $slug)
+    {
+        $dealer = Dealer::where('slug', $slug)->first();
+
+        return [
+            'name' => $dealer?->name,
+            'primaryColor' => $dealer?->primary_color,
+            'logoUrl' => $dealer?->logo_url,
+        ];
+    }
+
     // The current dealer's branding — applied app-wide on load. Null values fall
     // back to the default GCN theme + bundled logo on the client.
     public function branding()

@@ -14,6 +14,7 @@ class AuthController extends Controller
         $data = $request->validate([
             'email' => ['required', 'email'],
             'password' => ['required'],
+            'dealerSlug' => ['nullable', 'string'], // the subdomain workspace they're logging into
         ]);
 
         $user = User::where('email', $data['email'])->first();
@@ -22,6 +23,16 @@ class AuthController extends Controller
         }
         if (! $user->is_active) {
             throw ValidationException::withMessages(['email' => 'This account is disabled.']);
+        }
+
+        // Hard workspace binding: on a dealer's subdomain, only that dealer's users
+        // may sign in (the super-admin may sign in anywhere). This is what makes a
+        // personal URL unshareable to another dealer.
+        if (! empty($data['dealerSlug']) && ! $user->is_super_admin) {
+            $dealer = \App\Models\Dealer::where('slug', $data['dealerSlug'])->first();
+            if (! $dealer || $user->dealer_id !== $dealer->id) {
+                throw ValidationException::withMessages(['email' => 'This login is for a different workspace.']);
+            }
         }
 
         $user->forceFill(['last_active_at' => now()])->save();

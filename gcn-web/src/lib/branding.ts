@@ -1,5 +1,24 @@
 import type { Branding } from '../services/api';
 
+const RESERVED_SUBDOMAINS = new Set(['www', 'app', 'api', 'admin', 'staging', 'localhost']);
+
+/**
+ * The dealer slug for this visit: a `?dealer=slug` override (for dev/testing on
+ * localhost before DNS exists), else the first label of a `{slug}.domain.tld`
+ * hostname. Apex / www / bare host / IP → null (the marketing site).
+ */
+export function dealerSlug(): string | null {
+  const override = new URLSearchParams(window.location.search).get('dealer');
+  if (override) return override.toLowerCase();
+
+  const host = window.location.hostname;
+  if (/^\d+\.\d+\.\d+\.\d+$/.test(host)) return null; // raw IP
+  const parts = host.split('.');
+  if (parts.length < 3) return null; // apex (gcnisp.com) or localhost
+  const sub = parts[0].toLowerCase();
+  return RESERVED_SUBDOMAINS.has(sub) ? null : sub;
+}
+
 // The default GCN ramp lives in index.css. When a dealer sets a primary colour
 // we derive the full 50→900 ramp from that single hex and override the CSS
 // variables at runtime; the logo URL is stored for the Logo component to read.

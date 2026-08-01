@@ -1,8 +1,8 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { api, auth, bootstrapRefData, login as apiLogin, logout as apiLogout, me, type AuthUser } from './api';
+import { api, auth, bootstrapRefData, login as apiLogin, logout as apiLogout, me, publicBranding, type AuthUser } from './api';
 import { LogoMark } from '../components/Logo';
-import { applyBranding } from '../lib/branding';
+import { applyBranding, dealerSlug } from '../lib/branding';
 
 interface AuthCtx {
   user: AuthUser | null;
@@ -19,6 +19,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let alive = true;
+    const slug = dealerSlug();
+    // A dealer subdomain is a private entrance — keep it out of search engines.
+    if (slug) {
+      const meta = document.createElement('meta');
+      meta.name = 'robots';
+      meta.content = 'noindex';
+      document.head.appendChild(meta);
+    }
     (async () => {
       if (auth.token) {
         try {
@@ -31,6 +39,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         } catch {
           auth.clear();
+        }
+      } else if (slug) {
+        // Not signed in yet, but on a dealer subdomain → theme the login screen
+        // with that dealer's branding.
+        try {
+          applyBranding(await publicBranding(slug));
+        } catch {
+          /* best-effort */
         }
       }
       if (alive) setReady(true);

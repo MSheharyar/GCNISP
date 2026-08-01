@@ -3,6 +3,7 @@
 // Bearer header. Reference data (accounts/providers/packages) is cached once
 // after login so the synchronous `lookup` helper below stays instant.
 
+import { dealerSlug } from '../lib/branding';
 import type {
   Account,
   CableCustomer,
@@ -359,14 +360,19 @@ export interface DealerCreatePayload {
 }
 
 export async function login(email: string, password: string): Promise<AuthUser> {
+  // On a dealer subdomain, bind the login to that workspace (server rejects a
+  // user who belongs to a different dealer).
   const { token, user } = await req<{ token: string; user: AuthUser }>('/login', {
     method: 'POST',
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email, password, dealerSlug: dealerSlug() ?? undefined }),
   });
   auth.set(token);
   await bootstrapRefData();
   return user;
 }
+
+// Public pre-login branding for a subdomain workspace.
+export const publicBranding = (slug: string) => req<Branding>(`/public/branding/${slug}`);
 
 export async function logout(): Promise<void> {
   try {
