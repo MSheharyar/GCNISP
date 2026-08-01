@@ -67,6 +67,31 @@ Toggleable modules (each = a nav group + its pages + its API):
 ### Owner console
 - In **Dealer Console → each dealer**, a **Modules** checklist (all keys, tick/untick) → saved via the existing `PUT /admin/dealers/{id}` (extended with `modules`).
 
+### Module relationships ("works best with")
+Some modules lean on others. When you tick a module in the console, it **states its recommended companions**, and if any aren't enabled yet it shows a soft nudge with a one-click "add recommended" (advisory, never forced):
+
+| Module | Works best with |
+|---|---|
+| `monthly` | `internet` |
+| `sync` | `internet`, `monthly` |
+| `invoices` | `internet` |
+| `quotations` | `internet` |
+| `topups` | `sync` |
+| `reports` | `internet`, `cashbook` |
+| `cashbook` | `expenses` |
+| `expenses` | `cashbook` |
+| `cable` | `cashbook` |
+| `internet`, `staff` | (standalone) |
+
+- Stored as a static `RECOMMENDS` map shared by web + mobile (kept next to the module registry).
+
+### Mobile parity (same modules on the app)
+The **mobile app reads the identical `modules`** list from the login/`/me` payload and gates its own bottom-nav + "More" menu the same way — so if you enable only 3 modules for a dealer, their staff see only those 3 on the phone too:
+- `internet` → Recharges, Recovery, Customers, Record payment
+- `monthly` → Monthly Register · `cashbook` → Cash Book · `cable` → TV Cable · `sync` → the Sync button
+- Dashboard + profile/sign-out are always-on core.
+- Work: add `modules` to the mobile `AuthUser`; filter `home_shell` tabs + `more_screen` items by it.
+
 ### Pieces to build
 | Layer | Work |
 |---|---|
@@ -92,6 +117,11 @@ Toggleable modules (each = a nav group + its pages + its API):
 | Frontend | QR generator (small bundled lib, no external calls); "Get the mobile app" card in Settings; console APK-link input |
 
 > Note: Android will warn on "install from unknown sources" for a sideloaded APK — expected for Drive distribution. A short "how to install" line handles that.
+
+### Confirmed approach + one refinement (agreed with you)
+Your plan is right: **you** build & maintain the APK (it'll get regular patch updates) and upload it to Google Drive; you give me the **link**, and it drives the QR. Two things to make it smooth:
+- **The QR feature is link-agnostic — I can build it now.** It renders a QR from whatever URL is stored per dealer. It simply shows nothing until you paste a link, then the QR appears. So we don't have to wait; you paste the Drive link when ready.
+- **Use a stable link so the QR never has to change on each patch:** on Drive, update the file via **"Manage versions"** (keeps the same file ID / link); and use the **direct-download form** `https://drive.google.com/uc?export=download&id=FILE_ID` rather than the `/view` preview link. (Large APKs can hit Drive's virus-scan interstitial — if that bites, we later host `gcnisp.com/app/latest.apk` on your VPS for a clean, constant, direct link.)
 
 ---
 
