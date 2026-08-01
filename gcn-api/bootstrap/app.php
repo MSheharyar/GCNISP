@@ -17,6 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => \App\Http\Middleware\EnsureRole::class,
             'tenant' => \App\Http\Middleware\SetTenant::class,
             'superadmin' => \App\Http\Middleware\EnsureSuperAdmin::class,
+            'module' => \App\Http\Middleware\EnsureModule::class,
         ]);
 
         // Ensure the tenant is set BEFORE route-model binding resolves, so bound

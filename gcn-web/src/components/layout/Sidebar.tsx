@@ -25,6 +25,23 @@ import { useAuth } from '../../services/auth';
 // Restricted (viewer) staff only see these operational pages.
 const VIEWER_PATHS = new Set(['/dashboard', '/charged-today', '/monthly', '/recovery']);
 
+// Which feature module each nav path belongs to (unlisted = always-on core).
+const PATH_MODULE: Record<string, string> = {
+  '/log': 'internet',
+  '/charged-today': 'internet',
+  '/customers': 'internet',
+  '/recovery': 'internet',
+  '/monthly': 'monthly',
+  '/connect-sync': 'sync',
+  '/invoices': 'invoices',
+  '/quotations': 'quotations',
+  '/cable': 'cable',
+  '/cashbook': 'cashbook',
+  '/topups': 'topups',
+  '/reports': 'reports',
+  '/staff': 'staff',
+};
+
 const SECTIONS: { title?: string; items: { to: string; label: string; icon: typeof LayoutDashboard; end?: boolean; highlight?: boolean }[] }[] = [
   {
     items: [
@@ -68,9 +85,18 @@ const SECTIONS: { title?: string; items: { to: string; label: string; icon: type
 export default function Sidebar() {
   const { user } = useAuth();
   const isViewer = user?.role === 'viewer';
-  let sections = isViewer
-    ? SECTIONS.map((s) => ({ ...s, items: s.items.filter((i) => VIEWER_PATHS.has(i.to)) })).filter((s) => s.items.length)
-    : SECTIONS;
+  // Only show nav for modules this dealer has enabled (super-admin: everything).
+  const modules = user?.isSuperAdmin ? null : user?.modules ?? null;
+  const moduleOk = (to: string) => {
+    const m = PATH_MODULE[to];
+    return !m || !modules || modules.includes(m);
+  };
+  let sections = SECTIONS.map((s) => ({ ...s, items: s.items.filter((i) => moduleOk(i.to)) })).filter((s) => s.items.length);
+  if (isViewer) {
+    sections = sections
+      .map((s) => ({ ...s, items: s.items.filter((i) => VIEWER_PATHS.has(i.to)) }))
+      .filter((s) => s.items.length);
+  }
   // Only the SaaS owner sees the cross-dealer console.
   if (user?.isSuperAdmin) {
     sections = [

@@ -45,13 +45,13 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
     Route::get('/speed-map', [ReferenceController::class, 'speedMap']);
     Route::get('/org-settings', [ReferenceController::class, 'orgSettings']);
     Route::get('/branding', [ReferenceController::class, 'branding']);
-    Route::get('/connect-sync', [SyncController::class, 'index']);
-    Route::get('/portal-stats', [SyncController::class, 'stats']);
+    Route::get('/connect-sync', [SyncController::class, 'index'])->middleware('module:sync');
+    Route::get('/portal-stats', [SyncController::class, 'stats'])->middleware('module:sync');
 
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index']);
     Route::get('/charged-today', [ChargeController::class, 'today']);
-    Route::get('/monthly', [MonthlyController::class, 'index']);
+    Route::get('/monthly', [MonthlyController::class, 'index'])->middleware('module:monthly');
 
     // Customers (internet)
     Route::get('/customers', [CustomerController::class, 'index']);
@@ -61,17 +61,25 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
 
     // ── Financial reads (admin + operator only — hidden from viewers) ───────
     Route::middleware('role:admin,operator')->group(function () {
-        Route::get('/invoices', [InvoiceController::class, 'index']);
-        Route::get('/invoices/{invoice}/pdf', [InvoiceController::class, 'pdf']);
-        Route::get('/quotations', [QuotationController::class, 'index']);
-        Route::get('/quotations/{quotation}/pdf', [QuotationController::class, 'pdf']);
-        Route::get('/expenses', [FinanceController::class, 'expenses']);
-        Route::get('/cashbook', [FinanceController::class, 'cashbook']);
-        Route::get('/cable-customers', [CableController::class, 'index']);
-        Route::get('/cable-customers/{cable}', [CableController::class, 'show']);
-        Route::get('/cable-customers/{cable}/ledger', [CableController::class, 'ledger']);
-        Route::get('/topups', [TopupController::class, 'index']);
-        Route::post('/topups/refresh', [TopupController::class, 'refresh']);
+        Route::middleware('module:invoices')->group(function () {
+            Route::get('/invoices', [InvoiceController::class, 'index']);
+            Route::get('/invoices/{invoice}/pdf', [InvoiceController::class, 'pdf']);
+        });
+        Route::middleware('module:quotations')->group(function () {
+            Route::get('/quotations', [QuotationController::class, 'index']);
+            Route::get('/quotations/{quotation}/pdf', [QuotationController::class, 'pdf']);
+        });
+        Route::get('/expenses', [FinanceController::class, 'expenses'])->middleware('module:expenses');
+        Route::get('/cashbook', [FinanceController::class, 'cashbook'])->middleware('module:cashbook');
+        Route::middleware('module:cable')->group(function () {
+            Route::get('/cable-customers', [CableController::class, 'index']);
+            Route::get('/cable-customers/{cable}', [CableController::class, 'show']);
+            Route::get('/cable-customers/{cable}/ledger', [CableController::class, 'ledger']);
+        });
+        Route::middleware('module:topups')->group(function () {
+            Route::get('/topups', [TopupController::class, 'index']);
+            Route::post('/topups/refresh', [TopupController::class, 'refresh']);
+        });
     });
 
     // ── Writes (admin + operator only) ─────────────────────────────────────
@@ -81,27 +89,37 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
         Route::post('/customers/{customer}/log', [CustomerController::class, 'logChargePayment']);
         Route::post('/charges/{charge}/pay', [ChargeController::class, 'markPaid']);
         Route::post('/charges/{charge}/commit', [ChargeController::class, 'commit']);
-        Route::put('/charges/{charge}', [ChargeController::class, 'update']);
-        Route::delete('/charges/{charge}', [ChargeController::class, 'destroy']);
+        Route::put('/charges/{charge}', [ChargeController::class, 'update'])->middleware('module:monthly');
+        Route::delete('/charges/{charge}', [ChargeController::class, 'destroy'])->middleware('module:monthly');
         Route::post('/customers/{customer}/switch-account', [CustomerController::class, 'switchAccount']);
 
-        Route::post('/cable-customers', [CableController::class, 'store']);
-        Route::post('/cable-customers/{cable}/payment', [CableController::class, 'storePayment']);
+        Route::middleware('module:cable')->group(function () {
+            Route::post('/cable-customers', [CableController::class, 'store']);
+            Route::post('/cable-customers/{cable}/payment', [CableController::class, 'storePayment']);
+        });
 
-        Route::post('/expenses', [FinanceController::class, 'storeExpense']);
-        Route::post('/invoices', [InvoiceController::class, 'generate']);
-        Route::delete('/invoices/{invoice}', [InvoiceController::class, 'destroy']);
-        Route::post('/quotations', [QuotationController::class, 'generate']);
-        Route::delete('/quotations/{quotation}', [QuotationController::class, 'destroy']);
-        Route::post('/connect-sync/run', [SyncController::class, 'run']);
-        Route::post('/portal-stats/refresh', [SyncController::class, 'refreshStats']);
+        Route::post('/expenses', [FinanceController::class, 'storeExpense'])->middleware('module:expenses');
+        Route::middleware('module:invoices')->group(function () {
+            Route::post('/invoices', [InvoiceController::class, 'generate']);
+            Route::delete('/invoices/{invoice}', [InvoiceController::class, 'destroy']);
+        });
+        Route::middleware('module:quotations')->group(function () {
+            Route::post('/quotations', [QuotationController::class, 'generate']);
+            Route::delete('/quotations/{quotation}', [QuotationController::class, 'destroy']);
+        });
+        Route::middleware('module:sync')->group(function () {
+            Route::post('/connect-sync/run', [SyncController::class, 'run']);
+            Route::post('/portal-stats/refresh', [SyncController::class, 'refreshStats']);
+        });
     });
 
     // ── Admin-only: staff management + portal credentials ──────────────────
     Route::middleware('role:admin')->group(function () {
-        Route::post('/staff', [StaffController::class, 'store']);
-        Route::put('/staff/{user}', [StaffController::class, 'update']);
-        Route::delete('/staff/{user}', [StaffController::class, 'destroy']);
+        Route::middleware('module:staff')->group(function () {
+            Route::post('/staff', [StaffController::class, 'store']);
+            Route::put('/staff/{user}', [StaffController::class, 'update']);
+            Route::delete('/staff/{user}', [StaffController::class, 'destroy']);
+        });
 
         Route::get('/portal-accounts', [SyncController::class, 'portalAccounts']);
         Route::put('/portal-accounts/{account}', [SyncController::class, 'updatePortalAccount']);

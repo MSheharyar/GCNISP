@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Plus, Building2, UserRound, Copy, Check, Loader2, Power, PowerOff, Palette, Inbox, Phone } from 'lucide-react';
-import { api, type Dealer, type DealerCreatePayload, type Lead } from '../services/api';
+import { Plus, Building2, UserRound, Copy, Check, Loader2, Power, PowerOff, Palette, Inbox, Phone, SlidersHorizontal } from 'lucide-react';
+import { api, MODULES, type Dealer, type DealerCreatePayload, type Lead } from '../services/api';
 import { Card, CardHeader, Button, Modal, cn } from '../components/ui/primitives';
 
 const inputCls =
@@ -22,6 +22,7 @@ export default function DealerConsole() {
   const [showCreate, setShowCreate] = useState(false);
   const [created, setCreated] = useState<Dealer | null>(null);
   const [branding, setBranding] = useState<Dealer | null>(null);
+  const [modulesFor, setModulesFor] = useState<Dealer | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
 
   const load = () => api.dealers().then(setDealers);
@@ -93,6 +94,9 @@ export default function DealerConsole() {
                 </td>
                 <td className="px-5 py-3">
                   <div className="flex items-center justify-end gap-2">
+                    <Button variant="ghost" size="sm" onClick={() => setModulesFor(d)}>
+                      <SlidersHorizontal size={14} /> Modules
+                    </Button>
                     <Button variant="ghost" size="sm" onClick={() => setBranding(d)}>
                       <Palette size={14} /> Brand
                     </Button>
@@ -152,6 +156,15 @@ export default function DealerConsole() {
         onClose={() => setBranding(null)}
         onSaved={(u) => {
           setBranding(null);
+          setDealers((prev) => prev!.map((x) => (x.id === u.id ? u : x)));
+        }}
+      />
+
+      <ModulesModal
+        dealer={modulesFor}
+        onClose={() => setModulesFor(null)}
+        onSaved={(u) => {
+          setModulesFor(null);
           setDealers((prev) => prev!.map((x) => (x.id === u.id ? u : x)));
         }}
       />
@@ -379,6 +392,65 @@ function LeadsCard() {
         </table>
       )}
     </Card>
+  );
+}
+
+function ModulesModal({ dealer, onClose, onSaved }: { dealer: Dealer | null; onClose: () => void; onSaved: (d: Dealer) => void }) {
+  const [enabled, setEnabled] = useState<string[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (dealer) {
+      setEnabled(dealer.modules ?? []);
+      setError(null);
+    }
+  }, [dealer]);
+
+  if (!dealer) return null;
+
+  const toggle = (key: string) => setEnabled((e) => (e.includes(key) ? e.filter((k) => k !== key) : [...e, key]));
+
+  const save = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      const updated = await api.updateDealer(dealer.id, { modules: enabled });
+      onSaved(updated);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not save modules.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal open={!!dealer} onClose={onClose} title={`Modules — ${dealer.name}`}>
+      <div className="space-y-3">
+        <p className="text-[12.5px] text-slate-500">Tick the features this dealer's workspace shows. Dashboard &amp; Settings are always on.</p>
+        <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+          {MODULES.map((m) => (
+            <label key={m.key} className={cn('flex cursor-pointer items-center gap-2.5 rounded-lg border px-3 py-2 text-[13.5px]', enabled.includes(m.key) ? 'border-brand-200 bg-brand-50/50 text-slate-800' : 'border-slate-200 text-slate-600')}>
+              <input type="checkbox" checked={enabled.includes(m.key)} onChange={() => toggle(m.key)} className="h-4 w-4 rounded border-slate-300" />
+              {m.label}
+            </label>
+          ))}
+        </div>
+        {error && <div className="rounded-lg bg-rose-50 px-3 py-2 text-[13px] text-rose-700">{error}</div>}
+        <div className="flex items-center justify-between pt-1">
+          <div className="flex gap-2">
+            <button type="button" onClick={() => setEnabled(MODULES.map((m) => m.key))} className="text-[12px] font-medium text-brand-600">All</button>
+            <button type="button" onClick={() => setEnabled([])} className="text-[12px] font-medium text-slate-500">None</button>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="secondary" onClick={onClose}>Cancel</Button>
+            <Button variant="primary" onClick={save} disabled={saving}>
+              {saving ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />} Save
+            </Button>
+          </div>
+        </div>
+      </div>
+    </Modal>
   );
 }
 

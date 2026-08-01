@@ -41,6 +41,7 @@ class DealerController extends Controller
                 'status' => 'active',
                 'contact_name' => $data['contactName'] ?? null,
                 'contact_phone' => $data['contactPhone'] ?? null,
+                'enabled_modules' => Dealer::MODULES, // new dealers start with everything on
             ]);
 
             // The dealer's one approved main admin (only the owner can create it).
@@ -71,6 +72,9 @@ class DealerController extends Controller
             'slug' => ['sometimes', 'string', 'alpha_dash', 'max:60', Rule::unique('dealers', 'slug')->ignore($dealer->id)],
             'primaryColor' => ['sometimes', 'nullable', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
             'logoUrl' => ['sometimes', 'nullable', 'url', 'max:2048'],
+            'modules' => ['sometimes', 'array'],
+            'modules.*' => ['string', Rule::in(Dealer::MODULES)],
+            'apkUrl' => ['sometimes', 'nullable', 'url', 'max:2048'],
         ]);
 
         $dealer->fill([
@@ -81,6 +85,8 @@ class DealerController extends Controller
             'slug' => $data['slug'] ?? $dealer->slug,
             'primary_color' => array_key_exists('primaryColor', $data) ? $data['primaryColor'] : $dealer->primary_color,
             'logo_url' => array_key_exists('logoUrl', $data) ? $data['logoUrl'] : $dealer->logo_url,
+            'enabled_modules' => array_key_exists('modules', $data) ? array_values(array_intersect($data['modules'], Dealer::MODULES)) : $dealer->enabled_modules,
+            'apk_url' => array_key_exists('apkUrl', $data) ? $data['apkUrl'] : $dealer->apk_url,
         ])->save();
 
         return $this->payload($dealer->fresh());
@@ -97,6 +103,8 @@ class DealerController extends Controller
             'contactPhone' => $d->contact_phone,
             'primaryColor' => $d->primary_color,
             'logoUrl' => $d->logo_url,
+            'modules' => $d->modules(),
+            'apkUrl' => $d->apk_url,
             'users' => DB::table('users')->where('dealer_id', $d->id)->count(),
             'customers' => DB::table('customers')->where('dealer_id', $d->id)->count(),
             'createdAt' => optional($d->created_at)->toDateString(),

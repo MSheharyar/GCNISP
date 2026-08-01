@@ -4,6 +4,7 @@ import { api } from '../services/api';
 import { useApi } from '../lib/useApi';
 import { formatPKR, formatDate } from '../lib/format';
 import type { Expense, ExpenseCategory } from '../types';
+import { useAuth } from '../services/auth';
 import { Card, CardHeader, Button, Modal, LoadError, Pagination, cn } from '../components/ui/primitives';
 
 const PAGE_SIZE = 12;
@@ -21,9 +22,12 @@ const CAT_META: Record<ExpenseCategory, { label: string; className: string }> = 
 };
 
 export default function CashBook() {
+  const { user } = useAuth();
+  // Expenses (Kharcha) is its own module — only load it when enabled.
+  const hasExpenses = user?.isSuperAdmin || !user?.modules || user.modules.includes('expenses');
   const [reload, setReload] = useState(0);
   const { data: summary, error } = useApi(() => api.cashbook(), [reload]);
-  const { data: expenses } = useApi(() => api.expenses(), [reload]);
+  const { data: expenses } = useApi(() => (hasExpenses ? api.expenses() : Promise.resolve([])), [reload, hasExpenses]);
   const [cat, setCat] = useState<ExpenseCategory | 'all'>('all');
   const [addOpen, setAddOpen] = useState(false);
   const [monthPage, setMonthPage] = useState(1);

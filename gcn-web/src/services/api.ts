@@ -270,7 +270,23 @@ export interface AuthUser {
   role: 'admin' | 'operator' | 'viewer';
   isActive: boolean;
   isSuperAdmin?: boolean;
+  modules?: string[]; // enabled feature modules for this user's dealer
 }
+
+// The toggleable feature modules — keep in sync with Dealer::MODULES (backend).
+export const MODULES: { key: string; label: string }[] = [
+  { key: 'internet', label: 'Internet subscribers' },
+  { key: 'monthly', label: 'Monthly Register' },
+  { key: 'sync', label: 'Portal Sync' },
+  { key: 'invoices', label: 'Commercial Invoices' },
+  { key: 'quotations', label: 'Quotations' },
+  { key: 'cable', label: 'TV Cable' },
+  { key: 'cashbook', label: 'Cash Book' },
+  { key: 'expenses', label: 'Expenses (Kharcha)' },
+  { key: 'reports', label: 'Reports' },
+  { key: 'topups', label: 'Top-up received' },
+  { key: 'staff', label: 'Staff Management' },
+];
 
 export interface Dealer {
   id: number;
@@ -281,6 +297,8 @@ export interface Dealer {
   contactPhone: string | null;
   primaryColor: string | null;
   logoUrl: string | null;
+  modules: string[];
+  apkUrl: string | null;
   users: number;
   customers: number;
   createdAt: string | null;
@@ -382,7 +400,7 @@ export const api = {
     req<Dealer>('/admin/dealers', { method: 'POST', body: JSON.stringify(payload) }),
   updateDealer: (
     id: number,
-    payload: Partial<{ name: string; status: string; contactName: string; contactPhone: string; slug: string; primaryColor: string | null; logoUrl: string | null }>
+    payload: Partial<{ name: string; status: string; contactName: string; contactPhone: string; slug: string; primaryColor: string | null; logoUrl: string | null; modules: string[]; apkUrl: string | null }>
   ) => req<Dealer>(`/admin/dealers/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
   branding: () => req<Branding>('/branding'),
   leads: () => req<Lead[]>('/admin/leads'),

@@ -44,6 +44,10 @@ class AuthController extends Controller
 
     private function userPayload(User $u): array
     {
+        // The dealer's enabled modules drive the nav/routes the app shows. The
+        // super-admin (no dealer) gets every module.
+        $dealer = $u->dealer_id ? \App\Models\Dealer::find($u->dealer_id) : null;
+
         return [
             'id' => $u->id,
             'name' => $u->name,
@@ -51,6 +55,7 @@ class AuthController extends Controller
             'role' => $u->role,
             'isActive' => (bool) $u->is_active,
             'isSuperAdmin' => (bool) $u->is_super_admin,
+            'modules' => $dealer ? $dealer->modules() : \App\Models\Dealer::MODULES,
         ];
     }
 }
