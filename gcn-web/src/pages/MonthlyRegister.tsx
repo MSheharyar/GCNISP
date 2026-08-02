@@ -56,15 +56,16 @@ export default function MonthlyRegister() {
     );
   }, [accountRows, q]);
 
-  const s = useMemo(
-    () => ({
-      count: accountRows.length,
-      charged: accountRows.reduce((t, r) => t + r.amount, 0),
+  const s = useMemo(() => {
+    const billed = accountRows.filter((r) => !r.arrears); // charges billed this month
+    return {
+      count: billed.length,
+      charged: billed.reduce((t, r) => t + r.amount, 0),
+      // Every rupee received this month = paid billed rows + arrears collected now.
       collected: accountRows.filter((r) => r.paid).reduce((t, r) => t + r.amount, 0),
-      paidCount: accountRows.filter((r) => r.paid).length,
-    }),
-    [accountRows]
-  );
+      paidCount: billed.filter((r) => r.paid).length,
+    };
+  }, [accountRows]);
 
   const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -162,9 +163,16 @@ export default function MonthlyRegister() {
               {pageRows.map((r) => (
                 <tr key={r.chargeId} className="hover:bg-slate-50">
                   <td className="px-5 py-3">
-                    <Link to={`/customers/${r.customerId}`} className="text-[13px] font-medium text-slate-800 hover:text-brand-700">
-                      {r.name}
-                    </Link>
+                    <div className="flex items-center gap-1.5">
+                      <Link to={`/customers/${r.customerId}`} className="text-[13px] font-medium text-slate-800 hover:text-brand-700">
+                        {r.name}
+                      </Link>
+                      {r.arrears && (
+                        <span className="inline-flex rounded bg-violet-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-700" title={`Arrears collected this month for ${r.arrearsFor ?? 'an earlier'} bill`}>
+                          Arrears{r.arrearsFor ? ` · ${r.arrearsFor}` : ''}
+                        </span>
+                      )}
+                    </div>
                     <div className="text-[12px] text-slate-400">{r.loginId}</div>
                   </td>
                   <td className="px-4 py-3 text-[13px] text-slate-600">{r.houseNo}, {r.sector}</td>
@@ -196,7 +204,8 @@ export default function MonthlyRegister() {
                   </td>
                   {canEdit && (
                     <td className="px-4 py-3">
-                      <div className="flex items-center justify-end gap-1">
+                      {/* Arrears rows are a payment view, not an editable charge. */}
+                      <div className={cn('flex items-center justify-end gap-1', r.arrears && 'invisible')}>
                         <button onClick={() => setEditing(r)} title="Edit" className="rounded-md p-1.5 text-slate-400 hover:bg-brand-50 hover:text-brand-600">
                           <Pencil size={15} />
                         </button>

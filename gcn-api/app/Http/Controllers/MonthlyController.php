@@ -15,9 +15,11 @@ class MonthlyController extends Controller
     {
         $d = \App\Support\Tenant::id();
         // Months that actually have real (non-opening) charges, newest first.
-        $months = DB::table('charges')->where('dealer_id', $d)->where('source', '!=', 'opening')
-            ->select(DB::raw("to_char(charge_date,'YYYY-MM') as ym"))
-            ->distinct()->orderByDesc('ym')->pluck('ym');
+        $chargeMonths = DB::table('charges')->where('dealer_id', $d)->where('source', '!=', 'opening')
+            ->selectRaw("to_char(charge_date,'YYYY-MM') as ym")->distinct()->pluck('ym');
+        $payMonths = DB::table('payments')->where('dealer_id', $d)
+            ->selectRaw("to_char(received_date,'YYYY-MM') as ym")->distinct()->pluck('ym');
+        $months = $chargeMonths->merge($payMonths)->unique()->sortDesc()->values();
 
         $ym = $request->query('month');
         if (! $ym || ! $months->contains($ym)) {
@@ -61,8 +63,52 @@ class MonthlyController extends Controller
                 'paidDate' => optional($pay?->received_date)->toDateString(),
                 'method' => $pay?->method,
                 'balance' => (int) (($chargeSums[$c->customer_id] ?? 0) - ($paySums[$c->customer_id] ?? 0)),
+                'arrears' => false,
             ];
         });
+
+        // Money COLLECTED this month against a bill from another month (or a
+        // charge-less payment) — so the register reflects cash received now, not
+        // only this month's billing. Shown as clearly-flagged arrears rows.
+        $arrears = DB::table('payments as p')
+            ->leftJoin('charges as c', 'p.charge_id', '=', 'c.id')
+            ->join('customers as cu', 'p.customer_id', '=', 'cu.id')
+            ->leftJoin('accounts as a', 'c.account_id', '=', 'a.id')
+            ->where('p.dealer_id', $d)
+            ->whereRaw("to_char(p.received_date,'YYYY-MM') = ?", [$ym])
+            ->where(fn ($q) => $q->whereNull('p.charge_id')->orWhereRaw("to_char(c.charge_date,'YYYY-MM') <> ?", [$ym]))
+            ->orderBy('p.received_date')
+            ->get(['p.id as pid', 'p.amount_received', 'p.received_date', 'p.method',
+                'c.id as charge_id', 'c.charge_date', 'c.package_id', 'c.account_id', 'a.name as account',
+                'cu.id as customer_id', 'cu.name', 'cu.login_id', 'cu.house_no', 'cu.sector']);
+
+        $arrearsRows = $arrears->map(function ($r) use ($chargeSums, $paySums, $packages) {
+            $pkg = $r->package_id ? $packages->get($r->package_id) : null;
+
+            return [
+                'chargeId' => -$r->pid, // negative → unique key, not an editable charge
+                'customerId' => $r->customer_id,
+                'loginId' => $r->login_id,
+                'name' => $r->name,
+                'houseNo' => $r->house_no,
+                'sector' => $r->sector,
+                'account' => $r->account,
+                'accountId' => $r->account_id,
+                'package' => $pkg->name ?? null,
+                'packageId' => $r->package_id,
+                'speedMbps' => $pkg->speed_mbps ?? null,
+                'chargeDate' => substr($r->received_date, 0, 10),
+                'amount' => (int) $r->amount_received,
+                'paid' => true,
+                'paidDate' => substr($r->received_date, 0, 10),
+                'method' => $r->method,
+                'balance' => (int) (($chargeSums[$r->customer_id] ?? 0) - ($paySums[$r->customer_id] ?? 0)),
+                'arrears' => true,
+                'arrearsFor' => $r->charge_date ? \Illuminate\Support\Carbon::parse($r->charge_date)->format('M Y') : null,
+            ];
+        });
+
+        $rows = $rows->concat($arrearsRows);
 
         return [
             'months' => $months->values(),

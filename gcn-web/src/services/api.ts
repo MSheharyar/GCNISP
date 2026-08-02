@@ -120,6 +120,8 @@ export interface MonthlyRow {
   paidDate: string | null;
   method: string | null;
   balance: number;
+  arrears?: boolean; // a payment collected this month for another month's bill
+  arrearsFor?: string | null; // e.g. "Jun 2026"
 }
 
 export interface ChargeEditPayload {
